@@ -23,7 +23,7 @@ if ($path === '/') {
     $rows = q_all('SELECT * FROM forms WHERE active = 1 ORDER BY sort_order, id');
     foreach ($rows as &$r) $r['_def'] = form_def($r);
     unset($r);
-    echo render('public/home', ['forms' => $rows, 'pageTitle' => 'Formularios']);
+    echo render('public/home', ['forms' => $rows, 'pageTitle' => 'Formularios', 'pageDesc' => 'Elegí el formulario de tu servicio y completalo desde el celular.']);
     exit;
 }
 
@@ -35,7 +35,7 @@ if (preg_match('#^/f/([a-z0-9\-]+)(/gracias)?$#', $path, $m)) {
         exit;
     }
     $def = form_def($row);
-    $common = ['pageTitle' => $def['title'], 'accent' => $def['accent'], 'brand' => $def['brand']];
+    $common = ['pageTitle' => $def['title'], 'pageDesc' => $def['subtitle'] !== '' ? $def['subtitle'] . '. Completalo desde el celular en pocos minutos.' : null, 'accent' => $def['accent'], 'brand' => $def['brand']];
 
     // Página de gracias
     if (!empty($m[2])) {
