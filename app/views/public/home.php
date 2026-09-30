@@ -1,24 +1,16 @@
+<?php
+/* Inicio público: no lista los formularios. Cada cliente recibe su enlace directo por WhatsApp. */
+$wa = preg_replace('/\D+/', '', (string) cfg('coordinator_whatsapp', ''));
+?>
 <main class="wrap wrap--narrow home">
-  <p class="eyebrow"><span class="dot"></span> Formularios</p>
-  <h1 class="display">¿Qué <em>necesitás</em> contarnos?</h1>
-  <p class="lead">Elegí el formulario que corresponde a tu servicio. Se completa desde el celular y podés retomarlo más tarde: guardamos tu avance en este dispositivo.</p>
+  <p class="eyebrow">Formularios</p>
+  <h1 class="display">Tu formulario llega por <em>WhatsApp</em></h1>
+  <p class="lead">Cada formulario se completa desde el enlace que te enviamos. Si no lo tenés o se te perdió, escribinos y te lo pasamos al toque.</p>
 
-  <?php if (!$forms): ?>
-    <p class="note"><strong>Todavía no hay formularios activos.</strong></p>
-  <?php endif; ?>
-
-  <ul class="cards">
-    <?php foreach ($forms as $f): $d = $f['_def']; ?>
-      <li>
-        <a class="card-link" href="<?= h(url('f/' . $f['slug'])) ?>">
-          <span class="card-link__ico"><?= icon($d['icon'], 30) ?></span>
-          <span class="card-link__body">
-            <b><?= h($d['title']) ?></b>
-            <small><?= h($d['subtitle']) ?></small>
-          </span>
-          <span class="card-link__go"><?= icon('arrow', 20) ?></span>
-        </a>
-      </li>
-    <?php endforeach; ?>
-  </ul>
+  <div class="thanks__actions">
+    <?php if ($wa): ?>
+      <a class="btn btn--wa" href="https://wa.me/<?= h($wa) ?>?text=<?= rawurlencode('Hola! Necesito el enlace del formulario para mi servicio.') ?>" target="_blank" rel="noopener"><?= icon('whatsapp', 18) ?> Pedir mi formulario</a>
+    <?php endif; ?>
+    <a class="btn btn--ghost" href="https://jemaic.com">Conocer Jema</a>
+  </div>
 </main>
