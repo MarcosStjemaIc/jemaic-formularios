@@ -13,6 +13,9 @@ foreach ($answers as $a) $labelOf[$a['k']] = $a['label'];
 function render_answer_value(array $a): string
 {
     $v = $a['value'];
+    if (is_array($v) && in_array($a['type'], ['repeater', 'captions'], true)) {
+        return '<ol class="replist">' . implode('', array_map(fn($x) => '<li>' . h(is_array($x) ? implode(' · ', $x) : $x) . '</li>', $v)) . '</ol>';
+    }
     if (is_array($v)) {
         return '<ul class="taglist">' . implode('', array_map(fn($x) => '<li>' . h($x) . '</li>', $v)) . '</ul>';
     }
@@ -26,6 +29,7 @@ function render_answer_value(array $a): string
             $u = preg_match('#^https?://#i', $s) ? $s : 'https://' . $s;
             return '<a href="' . h($u) . '" target="_blank" rel="noopener noreferrer">' . h($s) . ' ↗</a>';
         case 'date': return h(fmt_date($s));
+        case 'datetime': return h(answer_text($s, 'datetime'));
         case 'colors':
             $out = '<span class="colorrow">';
             foreach (array_map('trim', explode(',', $s)) as $c) $out .= '<span><i style="background:' . h($c) . '"></i>' . h($c) . '</span>';
@@ -44,6 +48,7 @@ function render_answer_value(array $a): string
   <div class="ahead__actions no-print">
     <?php if ($prev): ?><a class="btn btn--ghost btn--sm" href="<?= h(url('admin/responses/' . $prev)) ?>" title="Más reciente">←</a><?php endif; ?>
     <?php if ($next): ?><a class="btn btn--ghost btn--sm" href="<?= h(url('admin/responses/' . $next)) ?>" title="Más antigua">→</a><?php endif; ?>
+    <?php if (($def['export'] ?? '') === 'queplanazo'): ?><a class="btn btn--accent btn--sm" href="<?= h(url('admin/responses/' . $sub['id'] . '/queplanazo.json')) ?>">Descargar datos para Qué Planazo</a><?php endif; ?>
     <button class="btn btn--ghost btn--sm" type="button" onclick="window.print()">Imprimir</button>
   </div>
 </div>

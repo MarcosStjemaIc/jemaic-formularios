@@ -2,7 +2,7 @@
 declare(strict_types=1);
 
 /** Envía un email. Devuelve true si el servidor lo aceptó. Nunca lanza excepciones. */
-function send_mail(string $to, string $subject, string $html, string $text = '', ?string $replyTo = null): bool
+function send_mail(string $to, string $subject, string $html, string $text = '', ?string $replyTo = null, array $attachments = []): bool
 {
     try {
         $from = (string) cfg('mail.from_email', '');
@@ -22,6 +22,8 @@ function send_mail(string $to, string $subject, string $html, string $text = '',
             'Message-ID: <' . bin2hex(random_bytes(8)) . '@' . (parse_url(abs_url(), PHP_URL_HOST) ?: 'localhost') . '>',
             'Content-Type: multipart/alternative; boundary="' . $boundary . '"',
         ];
+        $mixed = $attachments ? 'm_' . bin2hex(random_bytes(8)) : '';
+        if ($mixed) $headers[count($headers) - 1] = 'Content-Type: multipart/mixed; boundary="' . $mixed . '"';
         if ($replyTo && filter_var($replyTo, FILTER_VALIDATE_EMAIL)) $headers[] = 'Reply-To: <' . $replyTo . '>';
 
         $body = '--' . $boundary . "\r\nContent-Type: text/plain; charset=UTF-8\r\nContent-Transfer-Encoding: base64\r\n\r\n"
@@ -29,6 +31,17 @@ function send_mail(string $to, string $subject, string $html, string $text = '',
               . '--' . $boundary . "\r\nContent-Type: text/html; charset=UTF-8\r\nContent-Transfer-Encoding: base64\r\n\r\n"
               . chunk_split(base64_encode($html))
               . '--' . $boundary . "--\r\n";
+        if ($mixed) {
+            $alt = $body;
+            $body = '--' . $mixed . "\r\nContent-Type: multipart/alternative; boundary=\"" . $boundary . "\"\r\n\r\n" . $alt;
+            foreach ($attachments as $att) {
+                $fname = str_replace(['"', "\r", "\n"], '', (string) $att['name']);
+                $body .= '--' . $mixed . "\r\nContent-Type: " . ($att['mime'] ?? 'application/octet-stream') . '; name="' . $enc($fname) . "\"\r\n"
+                    . "Content-Transfer-Encoding: base64\r\nContent-Disposition: attachment; filename=\"" . $enc($fname) . "\"\r\n\r\n"
+                    . chunk_split(base64_encode((string) $att['data']));
+            }
+            $body .= '--' . $mixed . "--\r\n";
+        }
 
         if (cfg('mail.driver', 'smtp') === 'mail') {
             $h = implode("\r\n", array_filter($headers, fn($x) => !str_starts_with($x, 'To:') && !str_starts_with($x, 'Subject:')));
@@ -164,7 +177,24 @@ function send_submission_emails(array $formRow, array $def, array $sub): void
     $inner = '<p style="font-size:14px;color:#282b23;margin:0 0 6px">Código <strong>' . h($sub['ref']) . '</strong> · ' . h(date('d/m/Y H:i')) . '</p>'
         . '<p style="margin:0 0 6px"><a href="' . h($panel) . '" style="display:inline-block;background:#282b23;color:#fff;text-decoration:none;padding:10px 18px;border-radius:999px;font-size:14px">Abrir en el panel</a></p>'
         . answers_table_html($answers, $sub['files']);
-    foreach ($to as $addr) send_mail($addr, $subject, email_shell($subject, $inner), 'Código ' . $sub['ref'] . ' · ' . date('d/m/Y H:i') . "\nAbrir en el panel: " . $panel . "\n\n" . answers_text($answers, $sub['files']), $clientEmail ?: null);
+    // Adjuntos para el equipo: los archivos (si no pesan demasiado) y, si corresponde, el JSON para Qué Planazo.
+    $atts = [];
+    $total = 0; $skipped = 0;
+    foreach ($sub['files'] as $list) {
+        foreach ($list as $fl) {
+            $full = STORAGE_DIR . '/uploads/' . $fl['path'];
+            $size = is_file($full) ? (int) filesize($full) : 0;
+            if (!$size || $total + $size > 18 * 1048576) { $skipped++; continue; }
+            $total += $size;
+            $atts[] = ['name' => $fl['name'], 'mime' => $fl['mime'] ?? 'application/octet-stream', 'data' => (string) file_get_contents($full)];
+        }
+    }
+    if (($def['export'] ?? '') === 'queplanazo') {
+        $atts[] = ['name' => 'invitacion-' . $sub['ref'] . '.json', 'mime' => 'application/json',
+            'data' => json_encode(planazo_export($answers, $sub['files'], $sub['ref']), JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)];
+    }
+    if ($skipped) $inner .= '<p style="font-size:13px;color:#b44112;margin:14px 0 0">' . $skipped . ' archivo(s) no se adjuntaron porque el email quedaría muy pesado. Están en el panel.</p>';
+    foreach ($to as $addr) send_mail($addr, $subject, email_shell($subject, $inner), 'Código ' . $sub['ref'] . ' · ' . date('d/m/Y H:i') . "\nAbrir en el panel: " . $panel . "\n\n" . answers_text($answers, $sub['files']), $clientEmail ?: null, $atts);
 
     // Confirmación al cliente
     if ($clientEmail !== '' && filter_var($clientEmail, FILTER_VALIDATE_EMAIL)) {

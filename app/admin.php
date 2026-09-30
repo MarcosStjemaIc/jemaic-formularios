@@ -39,6 +39,11 @@ function admin_dispatch(string $path, string $method)
         }
     }
 
+    if (preg_match('#^/admin/responses/(\d+)/queplanazo\.json$#', $path, $m)) {
+        $sub = q_one('SELECT * FROM submissions WHERE id = ?', [(int) $m[1]]);
+        if (!$sub) { http_response_code(404); echo render_error('No encontramos esa respuesta.', 'No encontrado'); return; }
+        return admin_response_json($sub);
+    }
     if (preg_match('#^/admin/responses/(\d+)(?:/(update|delete))?$#', $path, $m)) {
         $sub = q_one('SELECT * FROM submissions WHERE id = ?', [(int) $m[1]]);
         if (!$sub) { http_response_code(404); echo render_error('Respuesta inexistente.', 'No encontrada'); return; }
@@ -230,7 +235,7 @@ function admin_form_save(array $row): void
         'client_email_field' => (string) ($_POST['client_email_field'] ?? ''),
         'list_fields' => (array) ($_POST['list_fields'] ?? []),
         'steps' => $steps,
-    ]);
+    ] + array_intersect_key(json_decode((string) $row['definition'], true) ?: [], array_flip(['version', 'export'])));
     if (!$def['steps']) $errors[] = 'El formulario necesita al menos un paso con campos.';
     $names = array_column(all_fields($def), 'name');
     $def['list_fields'] = array_values(array_intersect($def['list_fields'], $names));
@@ -290,6 +295,18 @@ function admin_response(array $sub): void
     $next = q_val('SELECT id FROM submissions WHERE form_id = ? AND (created_at < ? OR (created_at = ? AND id < ?)) ORDER BY created_at DESC, id DESC LIMIT 1', [$sub['form_id'], $sub['created_at'], $sub['created_at'], $sub['id']]);
     // Al abrir una respuesta nueva, pasa a "En curso"? No: el cambio de estado es manual.
     admin_render('response', compact('sub', 'row', 'def', 'answers', 'files', 'prev', 'next') + ['pageTitle' => $sub['ref']]);
+}
+
+/** Descarga el JSON listo para crear la invitación en Qué Planazo. */
+function admin_response_json(array $sub): void
+{
+    $answers = json_decode((string) $sub['answers'], true) ?: [];
+    $files = json_decode((string) ($sub['files'] ?? ''), true) ?: [];
+    $data = planazo_export($answers, $files, (string) $sub['ref']);
+    header('Content-Type: application/json; charset=utf-8');
+    header('Content-Disposition: attachment; filename="invitacion-' . preg_replace('/[^A-Za-z0-9-]/', '', (string) $sub['ref']) . '.json"');
+    echo json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    exit;
 }
 
 function admin_response_update(array $sub): void

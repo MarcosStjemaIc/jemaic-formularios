@@ -155,11 +155,12 @@ function fmt_bytes(int $n): string
 function answer_text($value, string $type = 'text'): string
 {
     if (is_array($value)) {
-        $value = array_map(fn($v) => (string) $v, $value);
-        return implode(' | ', array_filter($value, fn($v) => $v !== ''));
+        $value = array_map(fn($v) => is_array($v) ? implode(' · ', array_map('strval', $v)) : (string) $v, $value);
+        return implode(in_array($type, ['repeater', 'captions'], true) ? "\n" : ' | ', array_filter($value, fn($v) => $v !== ''));
     }
     $v = (string) $value;
     if ($type === 'date') return fmt_date($v);
+    if ($type === 'datetime' && preg_match('/^(\d{4})-(\d{2})-(\d{2})T(\d{2}:\d{2})$/', $v, $m)) return $m[3] . '/' . $m[2] . '/' . $m[1] . ' · ' . $m[4] . ' hs';
     return $v;
 }
 

@@ -58,15 +58,20 @@ function render_field(array $f, array $values, array $errors): string
     $id = 'f_' . $name;
     $err = $errors[$name] ?? '';
     $cur = field_value($values, $name);
+    if ($cur === null && isset($f['default'])) $cur = $f['default'];
     $req = !empty($f['required']);
     $attrs = ' data-name="' . h($name) . '" data-type="' . h($type) . '"' . ($req ? ' data-required="1"' : '');
     if (!empty($f['show_if'])) $attrs .= " data-show='" . h(json_encode($f['show_if'], JSON_UNESCAPED_UNICODE)) . "'";
     if (!empty($f['rule'])) $attrs .= " data-rule='" . h(json_encode($f['rule'], JSON_UNESCAPED_UNICODE)) . "'";
+    if (!empty($f['min'])) $attrs .= ' data-min="' . (int) $f['min'] . '"';
+    if (!empty($f['need'])) $attrs .= ' data-need="' . (int) $f['need'] . '"';
+    if (($f['normalize'] ?? '') === 'digits') $attrs .= ' data-digits="1"';
     $cls = 'field field--' . $type . (($f['layout'] ?? '') === 'half' ? ' field--half' : '') . ($err ? ' has-error' : '');
 
     if ($type === 'info') {
         $title = $f['label'] !== '' ? '<strong>' . h($f['label']) . '</strong>' : '';
-        return '<aside class="' . $cls . ' note"' . $attrs . '>' . $title . '<p>' . nl2br(h($f['help'] ?? '')) . '</p></aside>';
+        $lnk = !empty($f['link']) && preg_match('#^https://#', (string) $f['link']) ? '<p><a class="note__link" href="' . h($f['link']) . '" target="_blank" rel="noopener">' . h($f['link_label'] ?? 'Ver') . ' ↗</a></p>' : '';
+        return '<aside class="' . $cls . ' note"' . $attrs . '>' . $title . '<p>' . nl2br(h($f['help'] ?? '')) . '</p>' . $lnk . '</aside>';
     }
 
     $label = h($f['label']) . ($req ? '<span class="req" title="Obligatorio"> *</span>' : '');
@@ -75,18 +80,22 @@ function render_field(array $f, array $values, array $errors): string
     $ph = !empty($f['placeholder']) ? ' placeholder="' . h($f['placeholder']) . '"' : '';
     $reqAttr = $req ? ' aria-required="true"' : '';
     $desc = !empty($f['help']) ? ' aria-describedby="' . $id . '_help"' : '';
+    $maxA = !empty($f['max']) ? ' maxlength="' . (int) $f['max'] . '" data-max="' . (int) $f['max'] . '"' : '';
+    $counter = !empty($f['max']) ? '<span class="count" aria-live="polite" hidden></span>' : '';
 
     switch ($type) {
-        case 'text': case 'email': case 'tel': case 'url': case 'date': case 'time': case 'number':
-            $extra = '';
-            if ($type === 'tel') $extra = ' inputmode="tel" autocomplete="tel"';
-            if ($type === 'email') $extra = ' inputmode="email" autocomplete="email" autocapitalize="off"';
-            if ($type === 'url') { $type = 'text'; $extra = ' inputmode="url" autocapitalize="off"'; }
-            if ($type === 'number') $extra = ' inputmode="numeric" min="' . h($f['min'] ?? 0) . '"';
-            $control = '<input type="' . $type . '" id="' . $id . '" name="f[' . h($name) . ']" value="' . h(is_array($cur) ? '' : $cur) . '"' . $ph . $extra . $reqAttr . $desc . '>';
+        case 'text': case 'email': case 'tel': case 'url': case 'date': case 'time': case 'number': case 'datetime':
+            $extra = $maxA;
+            if ($type === 'datetime') $type = 'datetime-local';
+            if ($type === 'tel') $extra .= ' inputmode="tel" autocomplete="tel"';
+            if ($type === 'email') $extra .= ' inputmode="email" autocomplete="email" autocapitalize="off"';
+            if ($type === 'url') { $type = 'text'; $extra .= ' inputmode="url" autocapitalize="off"'; }
+            if ($type === 'number') $extra .= ' inputmode="numeric" min="' . h($f['min'] ?? 0) . '"';
+            $control = '<input type="' . $type . '" id="' . $id . '" name="f[' . h($name) . ']" value="' . h(is_array($cur) ? '' : $cur) . '"' . $ph . $extra . $reqAttr . $desc . '>' . $counter;
+            if (!empty($f['map'])) $control .= '<div class="mapbox" data-map hidden><iframe title="Mapa" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe><small>¿Es este el lugar? Si no, agregá la ciudad o más detalles a la dirección.</small></div>';
             break;
         case 'textarea':
-            $control = '<textarea id="' . $id . '" name="f[' . h($name) . ']" rows="' . (int) ($f['rows'] ?? 4) . '"' . $ph . $reqAttr . $desc . '>' . h(is_array($cur) ? '' : $cur) . '</textarea>';
+            $control = '<textarea id="' . $id . '" name="f[' . h($name) . ']" rows="' . (int) ($f['rows'] ?? 4) . '"' . $ph . $maxA . $reqAttr . $desc . '>' . h(is_array($cur) ? '' : $cur) . '</textarea>' . $counter;
             break;
         case 'select':
             [$sel, $otherTxt] = split_other($cur);
@@ -100,7 +109,8 @@ function render_field(array $f, array $values, array $errors): string
             $multi = $type !== 'radio';
             [$sel, $otherTxt] = split_other($cur);
             $cards = !empty($f['cards']) ? ' choices--cards' : '';
-            $control = '<div class="choices' . $cards . ($type === 'palette' ? ' choices--palette' : '') . '" role="' . ($multi ? 'group' : 'radiogroup') . '"' . $desc . '>';
+            $hasImg = (bool) array_filter($f['options'], fn($o) => !empty($o['img']));
+            $control = '<div class="choices' . $cards . ($type === 'palette' ? ' choices--palette' : '') . ($hasImg ? ' choices--images' . (!empty($f['img_shape']) ? ' choices--' . h($f['img_shape']) : '') : '') . '" role="' . ($multi ? 'group' : 'radiogroup') . '"' . $desc . '>';
             foreach ($f['options'] as $o) {
                 $val = (string) $o['value'];
                 $checked = is_selected($sel, $val) ? ' checked' : '';
@@ -110,8 +120,9 @@ function render_field(array $f, array $values, array $errors): string
                     foreach ($o['colors'] as $c) $sw .= '<i style="background:' . h($c) . '"></i>';
                     $sw .= '</span>';
                 }
+                $img = !empty($o['img']) ? '<span class="choice__img"><img loading="lazy" decoding="async" src="' . h($o['img']) . '" alt=""></span>' : ($hasImg ? '<span class="choice__img choice__img--none">' . icon('sparkle', 26) . '</span>' : '');
                 $control .= '<label class="choice"><input type="' . ($multi ? 'checkbox' : 'radio') . '" name="f[' . h($name) . ']' . ($multi ? '[]' : '') . '" value="' . h($val) . '"' . $checked . '>'
-                    . '<span class="choice__box">' . $sw . '<b>' . h($o['label']) . '</b>' . (!empty($o['desc']) ? '<small>' . h($o['desc']) . '</small>' : '') . '</span></label>';
+                    . '<span class="choice__box">' . $img . $sw . '<b>' . h($o['label']) . '</b>' . (!empty($o['desc']) ? '<small>' . h($o['desc']) . '</small>' : '') . '</span></label>';
             }
             if (!empty($f['other'])) {
                 $checked = ($sel === '__otro' || (is_array($sel) && $otherTxt !== '') || $otherTxt !== '') ? ' checked' : '';
@@ -121,33 +132,85 @@ function render_field(array $f, array $values, array $errors): string
             }
             $control .= '</div>';
             break;
+        case 'switch':
+            $on = $cur === null || $cur === '' || $cur === 'Sí' || $cur === '1';
+            $control = '<label class="switchq"><input type="hidden" name="f[' . h($name) . ']" value="0" data-nodraft><input type="checkbox" id="' . $id . '" name="f[' . h($name) . ']" value="1"' . ($on ? ' checked' : '') . '>'
+                . '<span class="switchq__track" aria-hidden="true"></span><span class="switchq__text"><b>' . h($f['label']) . '</b>'
+                . '<small class="switchq__on">Incluida · completá los datos de abajo</small><small class="switchq__off">No va en tu invitación</small>'
+                . (!empty($f['help']) ? '<small class="switchq__help">' . h($f['help']) . '</small>' : '') . '</span></label>';
+            return '<div class="' . $cls . '"' . $attrs . '>' . $control . '</div>';
+        case 'repeater':
+            $rows = is_array($cur) && $cur ? array_values($cur) : [];
+            $minRows = max(1, (int) ($f['min_rows'] ?? 1));
+            while (count($rows) < $minRows) $rows[] = [];
+            $rowHtml = function ($r, $i) use ($f, $name) {
+                $o = '<div class="rep__row"><div class="rep__head"><b>' . h($f['row_label'] ?? 'Fila') . ' <span class="rep__n">' . ($i + 1) . '</span></b>'
+                    . '<button type="button" class="linklike rep__del" data-rep-del>Quitar</button></div><div class="rep__fields">';
+                foreach ($f['fields'] as $sf) {
+                    $nm = 'f[' . h($name) . '][' . $i . '][' . h($sf['name']) . ']';
+                    $sv = (string) ($r[$sf['name']] ?? '');
+                    $mx = !empty($sf['max']) ? ' maxlength="' . (int) $sf['max'] . '" data-max="' . (int) $sf['max'] . '"' : '';
+                    $ph = !empty($sf['placeholder']) ? ' placeholder="' . h($sf['placeholder']) . '"' : '';
+                    $o .= '<label class="rep__f rep__f--' . h($sf['type']) . (!empty($sf['wide']) ? ' rep__f--wide' : '') . '" data-sub="' . h($sf['name']) . '"' . ($sf['required'] ? ' data-required="1"' : '') . '><span>' . h($sf['label']) . '</span>';
+                    if ($sf['type'] === 'select') {
+                        $o .= '<select name="' . $nm . '" data-rep-name="' . h($sf['name']) . '"><option value="">Elegí…</option>';
+                        foreach ($sf['options'] as $op) $o .= '<option value="' . h($op['value']) . '"' . ((string) $op['value'] === $sv ? ' selected' : '') . '>' . h($op['label']) . '</option>';
+                        $o .= '</select>';
+                    } elseif ($sf['type'] === 'textarea') {
+                        $o .= '<textarea rows="2" name="' . $nm . '" data-rep-name="' . h($sf['name']) . '"' . $mx . $ph . '>' . h($sv) . '</textarea>';
+                    } else {
+                        $o .= '<input type="' . ($sf['type'] === 'time' ? 'time' : 'text') . '" name="' . $nm . '" data-rep-name="' . h($sf['name']) . '" value="' . h($sv) . '"' . $mx . $ph . '>';
+                    }
+                    $o .= '</label>';
+                }
+                return $o . '</div></div>';
+            };
+            $control = '<div class="rep" data-rep data-max-rows="' . (int) ($f['max_rows'] ?? 10) . '" data-min-rows="' . $minRows . '">';
+            foreach ($rows as $i => $r) $control .= $rowHtml($r, $i);
+            $control .= '<template>' . $rowHtml([], 0) . '</template>';
+            $control .= '<button type="button" class="btn btn--ghost btn--sm rep__add" data-rep-add>+ ' . h($f['add_label'] ?? 'Agregar') . '</button></div>';
+            break;
         case 'consent':
             $checked = ($cur === 'Sí') ? ' checked' : '';
             $control = '<label class="consent"><input type="checkbox" id="' . $id . '" name="f[' . h($name) . ']" value="1"' . $checked . '><span class="consent__box"></span>'
                 . '<span class="consent__text"><b>' . h($f['label']) . ($req ? '<span class="req"> *</span>' : '') . '</b>' . (!empty($f['help']) ? '<small>' . h($f['help']) . '</small>' : '') . '</span></label>';
             return '<div class="' . $cls . '"' . $attrs . '>' . $control . '<p class="err" role="alert">' . h($err) . '</p></div>';
         case 'file':
-            $accept = !empty($f['accept']) ? ' accept="' . h($f['accept']) . '"' : '';
-            $control = '<div class="drop" data-drop><input type="file" id="' . $id . '" name="files[' . h($name) . '][]" multiple' . $accept . ' data-max-mb="' . (int) cfg('uploads.max_file_mb', 15) . '" data-max-files="' . (int) cfg('uploads.max_files_per_field', 12) . '">'
-                . '<span class="drop__cta">' . icon('upload', 22) . '<b>Tocá para elegir archivos</b><small>o arrastralos hasta acá · hasta ' . (int) cfg('uploads.max_file_mb', 15) . ' MB cada uno</small></span>'
+            $mb = (int) ($f['max_mb'] ?? 0) ?: (int) cfg('uploads.max_file_mb', 15);
+            $nMax = (int) ($f['max_files'] ?? 0) ?: (int) cfg('uploads.max_files_per_field', 12);
+            $exts = (array) ($f['ext'] ?? []);
+            $accept = $exts ? ' accept="' . h(implode(',', array_map(fn($e) => '.' . $e, $exts)) . (array_intersect($exts, ['jpg', 'jpeg', 'png', 'webp']) ? ',image/jpeg,image/png,image/webp' : '') . (array_intersect($exts, ['mp3', 'm4a']) ? ',audio/mpeg,audio/mp4,audio/x-m4a' : '')) . '"'
+                : (!empty($f['accept']) ? ' accept="' . h($f['accept']) . '"' : '');
+            $what = $nMax === 1 ? ($f['file_word'] ?? 'un archivo') : ($f['file_word_plural'] ?? 'archivos');
+            $control = '<div class="drop" data-drop' . (!empty($f['captions']) ? ' data-captions="' . h($name) . '" data-caption-max="' . (int) ($f['caption_max'] ?? 160) . '"' : '') . (!empty($f['compress']) ? ' data-compress="1"' : '') . '><input type="file" id="' . $id . '" name="files[' . h($name) . '][]"' . ($nMax > 1 ? ' multiple' : '') . $accept . ' data-max-mb="' . $mb . '" data-max-files="' . $nMax . '">'
+                . '<span class="drop__cta">' . icon('upload', 22) . '<b>Tocá para elegir ' . h($what) . '</b><small>' . ($nMax > 1 ? 'hasta ' . $nMax . ' · ' : '') . ($exts ? strtoupper(implode(', ', array_diff($exts, ['jpeg']))) . ' · ' : '') . 'hasta ' . $mb . ' MB cada uno</small></span>'
                 . '<ul class="drop__list" aria-live="polite"></ul></div>';
+            if (!empty($f['link_alt'])) {
+                $lv = (string) ($values[$name . '__link'] ?? '');
+                $control .= '<div class="linkalt"><span class="linkalt__or">o pegá un link</span><input type="text" inputmode="url" autocapitalize="off" name="f[' . h($name) . '__link]" value="' . h($lv) . '" placeholder="' . h($f['link_placeholder'] ?? 'Link de Drive, Google Fotos o WeTransfer') . '" maxlength="500"></div>';
+            }
             break;
         case 'colors':
             $ctl = '<div class="colors" data-colors>';
             $have = $cur && !is_array($cur) ? array_map('trim', explode(',', (string) $cur)) : [];
-            $names = ['Principal', 'Secundario', 'Detalles'];
-            for ($i = 0; $i < 3; $i++) {
+            $names = array_values((array) ($f['slots'] ?? ['Principal', 'Secundario', 'Detalles']));
+            $hex = !empty($f['hex']);
+            if ($hex) $ctl = '<div class="colors colors--hex" data-colors>';
+            for ($i = 0; $i < min(3, count($names)); $i++) {
                 $v = $have[$i] ?? '';
-                $ctl .= '<label class="slot' . ($v ? ' is-set' : '') . '"><input type="color" value="' . h($v ?: '#ffffff') . '"' . ($v ? ' data-set="1"' : '') . '><span class="slot__dot"></span><span class="slot__name">' . $names[$i] . '</span></label>';
+                $ctl .= '<div class="slotwrap"><label class="slot' . ($v ? ' is-set' : '') . '"><input type="color" value="' . h($v ?: '#ffffff') . '"' . ($v ? ' data-set="1"' : '') . ' aria-label="' . h($names[$i]) . '"><span class="slot__dot"></span><span class="slot__name">' . h($names[$i]) . '</span></label>'
+                    . ($hex ? '<input type="text" class="slot__hex" value="' . h($v) . '" placeholder="#e9a9bb o rgb(233,169,187)" aria-label="Código de ' . h($names[$i]) . '" autocapitalize="off" spellcheck="false">' : '') . '</div>';
             }
             $ctl .= '<button type="button" class="linklike" data-colors-clear>Borrar</button>';
             $ctl .= '<input type="hidden" name="f[' . h($name) . ']" value="' . h(is_array($cur) ? '' : $cur) . '"></div>';
+            if ($hex) $ctl .= '<div class="cprev" data-cprev aria-hidden="true"><span class="cprev__eyebrow">Te invito a celebrar</span><b class="cprev__title">Lucía</b><span class="cprev__text">Una noche mágica para celebrar juntos</span><span class="cprev__btn">Confirmar asistencia</span></div>';
             $control = $ctl;
             break;
     }
 
-    $for = in_array($type, ['radio', 'checkbox', 'palette', 'colors', 'file'], true) ? '' : ' for="' . $id . '"';
-    $labelTag = in_array($type, ['radio', 'checkbox', 'palette', 'colors', 'file'], true)
+    $group = ['radio', 'checkbox', 'palette', 'colors', 'file', 'repeater'];
+    $for = in_array($type, $group, true) ? '' : ' for="' . $id . '"';
+    $labelTag = in_array($type, $group, true)
         ? '<span class="label" id="' . $id . '_label">' . $label . '</span>' : '<label class="label"' . $for . '>' . $label . '</label>';
     $warn = !empty($f['rule']) ? '<p class="warn" hidden>' . h($f['rule']['message'] ?? '') . '</p>' : '';
     return '<div class="' . $cls . '"' . $attrs . '>' . $labelTag . $help . $control . $warn . '<p class="err" role="alert">' . h($err) . '</p></div>';

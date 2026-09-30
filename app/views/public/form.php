@@ -10,7 +10,7 @@ $steps = $def['steps'];
   </section>
 
   <div class="draft-banner" id="draftBanner" hidden>
-    <span>Retomamos lo que habías completado.</span>
+    <span>Retomamos lo que habías completado.<?php if (array_filter(all_fields($def), fn($f) => $f['type'] === 'file')): ?> Las fotos y archivos no se guardan: si ya los habías elegido, volvé a subirlos.<?php endif; ?></span>
     <button type="button" class="linklike" id="draftReset">Empezar de nuevo</button>
   </div>
 
@@ -34,11 +34,12 @@ $steps = $def['steps'];
     </div>
 
     <?php foreach ($steps as $i => $s): ?>
-      <section class="step" data-step="<?= $i ?>" data-title="<?= h($s['title']) ?>"<?php if (!empty($s['show_if'])): ?> data-show='<?= h(json_encode($s['show_if'], JSON_UNESCAPED_UNICODE)) ?>'<?php endif; ?> hidden>
+      <section class="step<?= !empty($s['review']) ? ' step--review' : '' ?>" data-step="<?= $i ?>" data-title="<?= h($s['title']) ?>"<?= !empty($s['review']) ? ' data-review-step' : '' ?><?php if (!empty($s['show_if'])): ?> data-show='<?= h(json_encode($s['show_if'], JSON_UNESCAPED_UNICODE)) ?>'<?php endif; ?> hidden>
         <header class="step__head">
           <h2><?= h($s['title']) ?></h2>
           <?php if ($s['description']): ?><p><?= h($s['description']) ?></p><?php endif; ?>
         </header>
+        <?php if (!empty($s['review'])): ?><div class="review" data-review aria-live="polite"></div><?php endif; ?>
         <div class="fields">
           <?php foreach ($s['fields'] as $f) echo render_field($f, $values, $errors); ?>
         </div>

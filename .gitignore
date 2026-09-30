@@ -5,3 +5,5 @@ storage/*.sqlite
 !storage/uploads/.gitkeep
 !storage/logs/.gitkeep
 storage/.schema_ok
+storage/.forms_v2
+storage/backup-*.json

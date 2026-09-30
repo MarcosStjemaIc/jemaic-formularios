@@ -239,3 +239,5 @@ body.admin--bare{background:var(--paper)}
   .fld__tools{width:100%;justify-content:flex-start;padding:0 4px 4px}
   .fld__tools button{padding:6px 11px}
 }
+.replist{margin:0;padding-left:20px}
+.replist li{margin:2px 0}

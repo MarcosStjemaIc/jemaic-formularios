@@ -7,7 +7,9 @@ const FIELD_TYPES = [
     'select' => 'Lista desplegable', 'radio' => 'Una opción', 'checkbox' => 'Varias opciones',
     'consent' => 'Casilla de aceptación', 'file' => 'Archivos', 'colors' => 'Colores (hasta 3)',
     'palette' => 'Paletas sugeridas', 'info' => 'Texto informativo',
+    'switch' => 'Interruptor de sección', 'datetime' => 'Fecha y hora', 'repeater' => 'Lista de filas',
 ];
+const REPEATER_SUBTYPES = ['text', 'textarea', 'time', 'select'];
 const CHOICE_TYPES = ['select', 'radio', 'checkbox', 'palette'];
 
 // ---- Acceso a formularios ------------------------------------------------------
@@ -61,6 +63,23 @@ function normalize_definition(array $d): array
                 $f['other'] = !empty($f['other']);
             }
             if (!empty($f['show_if']) && (!is_array($f['show_if']) || empty($f['show_if']['field']))) unset($f['show_if']);
+            foreach (['max', 'min', 'max_count', 'max_files', 'max_mb', 'min_rows', 'max_rows', 'need'] as $k) if (isset($f[$k])) $f[$k] = max(0, (int) $f[$k]);
+            if ($f['type'] === 'repeater') {
+                $subs = [];
+                foreach ((array) ($f['fields'] ?? []) as $sf) {
+                    if (!is_array($sf) || empty($sf['name'])) continue;
+                    $sf += ['type' => 'text', 'label' => '', 'required' => false, 'placeholder' => ''];
+                    if (!in_array($sf['type'], REPEATER_SUBTYPES, true)) $sf['type'] = 'text';
+                    $sf['name'] = slugify((string) $sf['name'], '_');
+                    $sf['required'] = !empty($sf['required']);
+                    if (isset($sf['max'])) $sf['max'] = max(0, (int) $sf['max']);
+                    if ($sf['type'] === 'select') $sf['options'] = normalize_options($sf['options'] ?? []);
+                    $subs[] = $sf;
+                }
+                $f['fields'] = $subs;
+                $f['min_rows'] = $f['min_rows'] ?? 0;
+                $f['max_rows'] = max(1, $f['max_rows'] ?? 10);
+            }
             $fields[] = $f;
         }
         $s['fields'] = $fields;
@@ -91,12 +110,14 @@ function normalize_options($opts): array
         if (!is_array($o)) continue;
         $label = trim((string) ($o['label'] ?? $o['value'] ?? ''));
         if ($label === '') continue;
-        $value = trim((string) ($o['value'] ?? '')) ?: $label;
+        $value = trim((string) ($o['value'] ?? ''));
+        if ($value === '') $value = $label;
         if (isset($seen[$value])) continue;
         $seen[$value] = true;
         $item = ['value' => $value, 'label' => $label];
         if (!empty($o['desc'])) $item['desc'] = (string) $o['desc'];
         if (!empty($o['colors'])) $item['colors'] = array_values(array_filter((array) $o['colors'], fn($c) => preg_match('/^#[0-9a-fA-F]{6}$/', (string) $c)));
+        if (!empty($o['img']) && preg_match('#^(https://|/)[^\s"\'<>]+$#', (string) $o['img'])) $item['img'] = (string) $o['img'];
         $out[] = $item;
     }
     return $out;
@@ -163,11 +184,41 @@ function validate_submission(array $def, array $post, array $filesInput, ?int $s
 
             if ($f['type'] === 'file') {
                 $up = extract_uploads($filesInput, $name);
-                if ($f['required'] && !$up) { $errors[$name] = 'Adjuntá al menos un archivo.'; continue; }
+                $link = !empty($f['link_alt']) ? mb_substr(trim((string) ($raw[$name . '__link'] ?? '')), 0, 500) : '';
+                if ($link !== '' && !preg_match('#^https?://#i', $link)) $link = 'https://' . $link;
+                if ($f['required'] && !$up && $link === '') { $errors[$name] = !empty($f['link_alt']) ? 'Subí una foto o pegá un link.' : 'Adjuntá al menos un archivo.'; continue; }
+                if ($link !== '' && (!filter_var($link, FILTER_VALIDATE_URL) || !str_contains($link, '.'))) { $errors[$name] = 'El link no parece válido: copialo completo desde Drive, Google Fotos o WeTransfer.'; continue; }
                 $pendingFiles[$name] = $up;
-                $errs = validate_uploads($up);
+                $errs = validate_uploads($up, $f);
                 if ($errs) { $errors[$name] = $errs; continue; }
                 $answers[] = ['k' => $name, 'label' => $label, 'type' => 'file', 'step' => $s['title'], 'value' => array_map(fn($u) => $u['name'], $up)];
+                if ($link !== '') $answers[] = ['k' => $name . '__link', 'label' => $label . ' (link)', 'type' => 'url', 'step' => $s['title'], 'value' => $link, 'raw' => $link];
+                if (!empty($f['captions'])) {
+                    $caps = array_slice(array_map(fn($c) => mb_substr(trim((string) $c), 0, (int) ($f['caption_max'] ?? 160)), (array) ($raw[$name . '__cap'] ?? [])), 0, count($up));
+                    if (array_filter($caps, fn($c) => $c !== '')) {
+                        $answers[] = ['k' => $name . '__cap', 'label' => 'Textos de las fotos', 'type' => 'captions', 'step' => $s['title'],
+                            'value' => array_values(array_filter(array_map(fn($c, $i) => $c !== '' ? 'Foto ' . ($i + 1) . ': ' . $c : '', $caps, array_keys($caps)))), 'raw' => $caps];
+                    }
+                }
+                continue;
+            }
+
+            if ($f['type'] === 'repeater') {
+                $rows = is_array($val) ? $val : [];
+                $min = (int) ($f['min_rows'] ?? 0);
+                if ($f['required'] && count($rows) < max(1, $min)) { $errors[$name] = $min > 1 ? 'Completá al menos ' . $min . '.' : 'Completá al menos una fila.'; continue; }
+                $rowErr = null;
+                foreach ($rows as $ri => $r) {
+                    foreach ($f['fields'] as $sf) {
+                        $sv = (string) ($r[$sf['name']] ?? '');
+                        if ($sv === '') { if ($sf['required']) $rowErr = 'En la fila ' . ($ri + 1) . ' falta “' . $sf['label'] . '”.'; continue; }
+                        if ($sf['type'] === 'time' && !preg_match('/^([01]\d|2[0-3]):[0-5]\d$/', $sv)) $rowErr = 'Revisá la hora de la fila ' . ($ri + 1) . '.';
+                        if ($sf['type'] === 'select' && !option_valid($sf, $sv)) $rowErr = 'Revisá la fila ' . ($ri + 1) . '.';
+                    }
+                    if ($rowErr) break;
+                }
+                if ($rowErr) { $errors[$name] = $rowErr; continue; }
+                $answers[] = ['k' => $name, 'label' => $label, 'type' => 'repeater', 'step' => $s['title'], 'value' => repeater_lines($f, $rows), 'raw' => $rows];
                 continue;
             }
 
@@ -178,7 +229,10 @@ function validate_submission(array $def, array $post, array $filesInput, ?int $s
             }
 
             if ($err = type_error($f, $val)) { $errors[$name] = $err; }
-            $answers[] = ['k' => $name, 'label' => $label, 'type' => $f['type'], 'step' => $s['title'], 'value' => display_value($f, $val)];
+            elseif (($f['rule']['type'] ?? '') === 'before' && ($ref = (string) ($values[$f['rule']['ref'] ?? ''] ?? '')) !== '' && strcmp((string) $val, $ref) >= 0) {
+                $errors[$name] = (string) ($f['rule']['message'] ?? 'Tiene que ser antes de la fecha del evento.');
+            }
+            $answers[] = ['k' => $name, 'label' => $label, 'type' => $f['type'], 'step' => $s['title'], 'value' => display_value($f, $val), 'raw' => $val];
         }
     }
 
@@ -200,6 +254,20 @@ function clean_value(array $f, array $raw)
     $v = $raw[$name] ?? null;
     $type = $f['type'];
     if ($type === 'file' || $type === 'info') return '';
+    if ($type === 'switch') return ((string) (is_array($v) ? end($v) : $v) === '1') ? 'Sí' : 'No';
+    if ($type === 'repeater') {
+        $rows = [];
+        foreach (is_array($v) ? $v : [] as $r) {
+            if (!is_array($r)) continue;
+            $row = [];
+            foreach ($f['fields'] ?? [] as $sf) {
+                $sv = trim((string) (is_array($r[$sf['name']] ?? null) ? '' : ($r[$sf['name']] ?? '')));
+                $row[$sf['name']] = mb_substr($sv, 0, (int) ($sf['max'] ?? ($sf['type'] === 'textarea' ? 2000 : 300)));
+            }
+            if (implode('', $row) !== '') $rows[] = $row;
+        }
+        return array_slice($rows, 0, (int) ($f['max_rows'] ?? 10));
+    }
     if (in_array($type, ['checkbox', 'palette'], true)) {
         $arr = is_array($v) ? array_map(fn($x) => trim((string) $x), $v) : [];
         $arr = array_values(array_filter($arr, fn($x) => $x !== ''));
@@ -210,7 +278,7 @@ function clean_value(array $f, array $raw)
         } else {
             $arr = array_values(array_filter($arr, fn($x) => $x !== '__otro'));
         }
-        return array_slice($arr, 0, 40);
+        return array_slice($arr, 0, (int) ($f['max_count'] ?? 40) ?: 40);
     }
     if ($type === 'consent') return ($v === '1' || $v === 'on' || $v === 'si') ? 'Sí' : '';
     $s = is_array($v) ? '' : trim((string) $v);
@@ -218,7 +286,8 @@ function clean_value(array $f, array $raw)
         $other = trim((string) ($raw[$name . '__otro'] ?? ''));
         return $other !== '' ? 'Otro: ' . mb_substr($other, 0, 200) : '';
     }
-    $max = $type === 'textarea' ? 8000 : 500;
+    if ($type === 'tel' && ($f['normalize'] ?? '') === 'digits') return preg_replace('/\D+/', '', $s);
+    $max = (int) ($f['max'] ?? 0) ?: ($type === 'textarea' ? 8000 : 500);
     return mb_substr($s, 0, $max);
 }
 
@@ -226,7 +295,9 @@ function type_error(array $f, $val): ?string
 {
     $t = $f['type'];
     if ($t === 'email' && !filter_var($val, FILTER_VALIDATE_EMAIL)) return 'Revisá el email: parece que falta algo.';
-    if ($t === 'tel' && !preg_match('/^[+()\d\s.\-]{6,25}$/', (string) $val)) return 'Ingresá un teléfono válido, por ejemplo +54 9 280 123 4567.';
+    if ($t === 'tel' && ($f['normalize'] ?? '') === 'digits') { if (!preg_match('/^\d{8,15}$/', (string) $val)) return 'Escribí el número con código de país, por ejemplo +54 9 280 412 3456.'; }
+    elseif ($t === 'tel' && !preg_match('/^[+()\d\s.\-]{6,25}$/', (string) $val)) return 'Ingresá un teléfono válido, por ejemplo +54 9 280 123 4567.';
+    if ($t === 'datetime' && !preg_match('/^\d{4}-\d{2}-\d{2}T([01]\d|2[0-3]):[0-5]\d$/', (string) $val)) return 'Elegí la fecha y la hora.';
     if ($t === 'url') {
         $u = (string) $val;
         if (!preg_match('#^https?://#i', $u)) $u = 'https://' . $u;
@@ -239,11 +310,30 @@ function type_error(array $f, $val): ?string
     if ($t === 'time' && !preg_match('/^([01]\d|2[0-3]):[0-5]\d$/', (string) $val)) return 'Elegí una hora válida.';
     if ($t === 'number' && !is_numeric($val)) return 'Ingresá solo números.';
     if ($t === 'colors' && !preg_match('/^(#[0-9a-fA-F]{6})(\s*,\s*#[0-9a-fA-F]{6}){0,2}$/', (string) $val)) return 'Elegí hasta 3 colores.';
+    if ($t === 'colors' && !empty($f['need']) && count(explode(',', (string) $val)) < (int) $f['need']) return 'Elegí los ' . (int) $f['need'] . ' colores.';
     if (in_array($t, ['select', 'radio'], true) && !option_valid($f, (string) $val)) return 'Elegí una de las opciones.';
     if (in_array($t, ['checkbox', 'palette'], true)) {
         foreach ((array) $val as $x) if (!option_valid($f, (string) $x)) return 'Hay una opción que no es válida.';
+        if (!empty($f['min']) && count((array) $val) < (int) $f['min']) return 'Elegí al menos ' . (int) $f['min'] . '.';
     }
     return null;
+}
+
+/** Filas de una lista, en texto legible ("21:30 · Recepción"). */
+function repeater_lines(array $f, array $rows): array
+{
+    $out = [];
+    foreach ($rows as $r) {
+        $parts = [];
+        foreach ($f['fields'] as $sf) {
+            $v = (string) ($r[$sf['name']] ?? '');
+            if ($v === '') continue;
+            if ($sf['type'] === 'select') $v = ($sf['short'] ?? $sf['label']) . ': ' . display_value($sf + ['type' => 'select'], $v);
+            $parts[] = $v;
+        }
+        if ($parts) $out[] = implode(' · ', $parts);
+    }
+    return $out;
 }
 
 /** Guarda el texto de la opción (no su código interno) para que el panel y los emails sean legibles. */
@@ -283,20 +373,21 @@ function extract_uploads(array $filesInput, string $name): array
     return $out;
 }
 
-function validate_uploads(array $ups): ?string
+function validate_uploads(array $ups, array $f = []): ?string
 {
-    $max = (int) cfg('uploads.max_file_mb', 15) * 1048576;
-    $maxN = (int) cfg('uploads.max_files_per_field', 12);
-    if (count($ups) > $maxN) return 'Podés subir hasta ' . $maxN . ' archivos por campo.';
-    $allowed = (array) cfg('uploads.allowed_ext', []);
+    $mb = (int) ($f['max_mb'] ?? 0) ?: (int) cfg('uploads.max_file_mb', 15);
+    $max = $mb * 1048576;
+    $maxN = (int) ($f['max_files'] ?? 0) ?: (int) cfg('uploads.max_files_per_field', 12);
+    if (count($ups) > $maxN) return $maxN === 1 ? 'Elegí un solo archivo.' : 'Podés subir hasta ' . $maxN . ' archivos.';
+    $allowed = !empty($f['ext']) ? array_values(array_intersect((array) $f['ext'], (array) cfg('uploads.allowed_ext', []))) : (array) cfg('uploads.allowed_ext', []);
     foreach ($ups as $u) {
         if ($u['error'] !== UPLOAD_ERR_OK) {
             return $u['error'] === UPLOAD_ERR_INI_SIZE || $u['error'] === UPLOAD_ERR_FORM_SIZE
                 ? '“' . $u['name'] . '” es demasiado pesado.' : 'No pudimos subir “' . $u['name'] . '”. Probá de nuevo.';
         }
-        if ($u['size'] > $max) return '“' . $u['name'] . '” supera los ' . cfg('uploads.max_file_mb', 15) . ' MB.';
+        if ($u['size'] > $max) return '“' . $u['name'] . '” supera los ' . $mb . ' MB.';
         $ext = strtolower(pathinfo($u['name'], PATHINFO_EXTENSION));
-        if (!in_array($ext, $allowed, true)) return 'El formato de “' . $u['name'] . '” no está permitido.';
+        if (!in_array($ext, $allowed, true)) return 'El formato de “' . $u['name'] . '” no está permitido (usá ' . strtoupper(implode(', ', array_diff($allowed, ['jpeg']))) . ').';
         if (!is_uploaded_file($u['tmp']) && !defined('ALLOW_TEST_UPLOADS')) return 'Archivo inválido.';
     }
     return null;
@@ -355,4 +446,63 @@ function handle_submission(array $formRow, array $def, array $post, array $files
         mb_strtolower(implode(' ', $search)), $id,
     ]);
     return [['id' => $id, 'ref' => $ref, 'answers' => $answers, 'files' => $saved], [], $values];
+}
+
+// ---- Exportación para el editor de Qué Planazo -------------------------------------------
+/** Arma el JSON con las claves del editor de Qué Planazo a partir de una respuesta guardada. */
+function planazo_export(array $answers, array $files, string $ref = ''): array
+{
+    $r = [];
+    foreach ($answers as $a) $r[$a['k']] = $a['raw'] ?? $a['value'];
+    $v = fn(string $k, $d = '') => ($r[$k] ?? $d) === '' ? $d : ($r[$k] ?? $d);
+    $names = fn(string $k) => array_map(fn($f) => $f['name'], $files[$k] ?? []);
+    $first = fn(string $k) => $names($k)[0] ?? null;
+    $off = [];
+    foreach (['countdown', 'intro', 'gallery', 'details', 'trivia', 'capsule', 'extras', 'rsvp'] as $sec) {
+        if (($r['sec_' . $sec] ?? 'Sí') === 'No') $off[] = $sec;
+    }
+    $colors = array_values(array_filter(array_map('trim', explode(',', (string) $v('colors')))));
+    $trivia = array_map(fn($t) => [
+        'question' => $t['question'] ?? '', 'a' => $t['a'] ?? '', 'b' => $t['b'] ?? '', 'c' => $t['c'] ?? '',
+        'correct' => (int) ($t['correct'] ?? 0),
+    ], is_array($r['trivia'] ?? null) ? $r['trivia'] : []);
+    $schedule = array_map(fn($x) => ['time' => $x['time'] ?? '', 'label' => $x['label'] ?? ''], is_array($r['schedule'] ?? null) ? $r['schedule'] : []);
+    $gallery = $names('gallery_photos');
+    $caps = is_array($r['gallery_photos__cap'] ?? null) ? $r['gallery_photos__cap'] : [];
+    return [
+        'ref' => $ref,
+        'host' => ['name' => $v('host_name'), 'email' => $v('host_email'), 'phone' => $v('host_phone')],
+        'category' => $v('category'),
+        'title' => $v('title'),
+        'starts_at' => $v('starts_at'),
+        'deadline' => $v('deadline'),
+        'timezone' => 'America/Argentina/Buenos_Aires',
+        'style' => [
+            'theme' => $v('theme', 'jema'), 'look' => $v('look', 'jema'),
+            'colors' => $colors,
+            'font_titles' => $v('font_titles', 'jema'), 'font_texts' => $v('font_texts', 'jema'),
+            'motif_style' => $v('motif_style', 'jema'), 'metal_style' => $v('metal_style', 'jema'),
+            'background_style' => $v('background_style', 'jema'), 'mascot_style' => $v('mascot_style', 'jema'),
+            'countdown_style' => $v('countdown_style', 'jema'),
+        ],
+        'cover' => ['file' => $first('cover_photo'), 'link' => $v('cover_photo__link', null)],
+        'background_photo' => ['file' => $first('background_photo'), 'link' => null],
+        'greeting' => $v('greeting'),
+        'tagline' => $v('tagline'),
+        'sections_off' => $off,
+        'intro' => $v('intro'),
+        'gallery' => [
+            'title' => $v('gallery_title') ?: 'Pedacitos de nuestra historia',
+            'files' => $gallery,
+            'captions' => array_map(fn($i) => (string) ($caps[$i] ?? ''), array_keys($gallery)),
+            'link' => $v('gallery_photos__link', null),
+        ],
+        'venue' => $v('venue'), 'address' => $v('address'), 'dress' => $v('dress'),
+        'schedule' => $schedule,
+        'trivia' => $trivia,
+        'music_url' => $v('music_url'),
+        'audio' => ['file' => $first('audio'), 'title' => $v('audio_title')],
+        'gift' => $v('gift'),
+        'menus' => array_values((array) $v('menus', [])),
+    ];
 }

@@ -11,7 +11,7 @@ function ensure_schema(): void
     // Una vez creado todo, dejamos una marca para no repetirlo en cada visita.
     // (Para reinstalar en otra base de datos: borrar storage/.schema_ok)
     $marker = STORAGE_DIR . '/.schema_ok';
-    if (is_file($marker)) return;
+    if (is_file($marker)) { upgrade_seeded_forms(); return; }
 
     $lite = db_sqlite();
     $pk   = $lite ? 'INTEGER PRIMARY KEY AUTOINCREMENT' : 'INT AUTO_INCREMENT PRIMARY KEY';
@@ -96,4 +96,27 @@ function seed_forms_if_empty(): void
             'updated_at' => now(),
         ]);
     }
+}
+
+/**
+ * Actualiza una sola vez los formularios que vienen con el sistema cuando su versión cambia
+ * (hoy: la invitación digital v2). Guarda una copia de la versión anterior en storage/.
+ * Las respuestas ya recibidas no cambian: cada una guarda su propia copia de las preguntas.
+ */
+function upgrade_seeded_forms(): void
+{
+    $marker = STORAGE_DIR . '/.forms_v2';
+    if (is_file($marker)) return;
+    $file = APP_DIR . '/seeds/invitacion-digital.php';
+    $row = q_one('SELECT * FROM forms WHERE slug = ?', ['invitacion-digital']);
+    if ($row && is_file($file)) {
+        $old = json_decode((string) $row['definition'], true) ?: [];
+        if ((int) ($old['version'] ?? 1) < 2) {
+            @file_put_contents(STORAGE_DIR . '/backup-invitacion-digital-v1.json', (string) $row['definition']);
+            $def = normalize_definition(require $file);
+            q('UPDATE forms SET title = ?, definition = ?, updated_at = ? WHERE id = ?', [$def['title'], json_encode($def, JSON_UNESCAPED_UNICODE), now(), $row['id']]);
+            app_log('Formulario invitacion-digital actualizado a la versión 2 (copia anterior en storage/backup-invitacion-digital-v1.json).');
+        }
+    }
+    @file_put_contents($marker, date('c'));
 }

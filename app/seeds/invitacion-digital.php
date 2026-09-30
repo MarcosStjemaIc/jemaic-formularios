@@ -1,116 +1,193 @@
 <?php
+/**
+ * Invitación digital · Qué Planazo (v2)
+ * Las claves y opciones coinciden con el editor de queplanazo.jemaic.com
+ * para poder crear el borrador de la invitación automáticamente (ver planazo_export()).
+ */
 require_once __DIR__ . '/_helpers.php';
 
-$paletas = O([
-    ['Romántico', 'Romántico', '', ['#E5C3A6', '#9E6D5B', '#2B2B2B']],
-    ['Minimal', 'Minimal', '', ['#FFFFFF', '#EDEDED', '#222222']],
-    ['Marino', 'Marino', '', ['#0B2545', '#134074', '#8DA9C4']],
-    ['Pastel', 'Pastel', '', ['#FAD4D8', '#D8E2DC', '#FFE5D9']],
-    ['Clásico dorado', 'Clásico dorado', '', ['#D4AF37', '#2E2E2E', '#FFFFFF']],
-]);
+$QP = 'https://queplanazo.jemaic.com/assets/';
+$JEMA = ['jema', 'Que lo elija Jema'];
+$on = fn(string $sec) => ['field' => 'sec_' . $sec, 'equals' => 'Sí'];
+$img = function (array $list, string $dir, string $ext) use ($QP): array {
+    $out = [];
+    foreach ($list as [$v, $l]) $out[] = ['value' => $v, 'label' => $l] + ($v === 'jema' || $v === 'none' ? [] : ['img' => $QP . $dir . $v . $ext]);
+    return $out;
+};
+$IMG_EXT = ['jpg', 'jpeg', 'png', 'webp'];
+
+$themes = [$JEMA, ['starlight', 'Noche estrellada'], ['blossom', 'Jardín de sueños'], ['pearl', 'Aura perlada'], ['lunar', 'Luna en primer plano'],
+    ['paper', 'Papel & recuerdos'], ['muse', 'Tu canción favorita'], ['editorial', 'Amor editorial'], ['coastal', 'Promesa junto al mar'],
+    ['terracotta', 'Sí, bajo el sol'], ['vows', 'Solo nosotros'], ['vellum', 'Carta de amor'], ['linen', 'Entre líneas'],
+    ['varsity', 'La última lista'], ['neon', 'Modo prom'], ['sunset', 'Atardecer de promo'], ['afterhours', 'After · la gran noche'],
+    ['encore', 'Una última canción'], ['orbit', 'Órbita 2027'], ['fiesta', 'Club celebración'], ['gala', 'Noche de gala'],
+    ['garden', 'Brindis en el jardín'], ['companions', 'Nuestros cómplices'], ['nightclub', 'Club de medianoche'], ['pawprints', 'Amigos de cuatro patas']];
+
+$looks = [
+    ['value' => 'jema', 'label' => 'Que lo elija Jema'],
+    ['value' => 'romantica', 'label' => 'Romántica · rosa & plata', 'colors' => ['#8a5a6e', '#e9a9bb', '#ffffff']],
+    ['value' => 'lavanda', 'label' => 'Jardín de lavanda', 'colors' => ['#4f4466', '#b9a6d6', '#fbf9fd']],
+    ['value' => 'marfil', 'label' => 'Clásica marfil & oro', 'colors' => ['#3b3025', '#c2a15e', '#fbf7ef']],
+    ['value' => 'princesa', 'label' => 'Princesa celeste', 'colors' => ['#2e4a6b', '#9cc3e6', '#f6fbff']],
+    ['value' => 'estrellas', 'label' => 'Noche de estrellas', 'colors' => ['#f3eefc', '#c9b8f0', '#171a2e']],
+    ['value' => 'terracota', 'label' => 'Boho terracota', 'colors' => ['#6b3a2a', '#c98a62', '#fbf3e8']],
+    ['value' => 'minimal', 'label' => 'Minimal editorial', 'colors' => ['#1f1f1f', '#b5a58c', '#ffffff']],
+    ['value' => 'mar', 'label' => 'Mar & arena', 'colors' => ['#23495a', '#8fbfcc', '#f7fbfb']],
+    ['value' => 'vintage', 'label' => 'Carta vintage rosa', 'colors' => ['#5e4a4a', '#d4a5a5', '#fbf3ee']],
+    ['value' => 'prom', 'label' => 'Prom eléctrica', 'colors' => ['#f5efff', '#d8ff79', '#241636']],
+    ['value' => 'propio', 'label' => 'Prefiero elegir mis colores'],
+];
+
+$backgrounds = [$JEMA, ['none', 'Sin decoración'], ['butterflies', 'Mariposas y flores'], ['silverdust', 'Destellos plateados'], ['almond', 'Flores de almendro'],
+    ['stars', 'Polvo de estrellas'], ['silk', 'Seda en movimiento'], ['moonlight', 'Luz de luna'], ['cotton', 'Papel de algodón'],
+    ['royal', 'Corona de seda'], ['vowlines', 'Lazos & promesas'], ['pawtrail', 'Huellitas'], ['discoglow', 'Disco & melodía']];
+
+$pick = fn(array $pairs) => array_map(fn($p) => ['value' => $p[0], 'label' => $p[1]], $pairs);
 
 return [
+    'version' => 2,
+    'export' => 'queplanazo',
     'title' => 'Invitación digital',
     'subtitle' => 'Qué Planazo · por Jema',
     'brand' => 'planazo',
     'icon' => 'card',
     'accent' => '',
-    'intro' => 'Armemos tu invitación. Contanos los datos de tu evento, tus fotos, tus colores y tu historia: nosotros la diseñamos. Todos los datos son opcionales salvo los marcados; si algo no aplica, dejalo en blanco o aclaralo en los comentarios.',
-    'submit_label' => 'Enviar datos de mi invitación',
-    'thanks_title' => '¡Listo! Ya podemos armar tu invitación',
-    'thanks_text' => "Recibimos los datos de tu invitación. Los plazos corren desde que recibimos tus fotos y los datos del evento. Si algo falta, te escribimos por WhatsApp.",
-    'client_email_field' => 'email',
-    'list_fields' => ['homenajeados', 'plan', 'dia'],
+    'intro' => 'Con estas respuestas armamos tu invitación. Va por pasos: cada sección de la invitación tiene un interruptor “Quiero esta sección”; si no la querés, apagala y listo. Tu avance se guarda en este celular.',
+    'submit_label' => 'Enviar mi invitación',
+    'thanks_title' => '¡Listo! Ya tenemos todo para tu invitación',
+    'thanks_text' => 'Recibimos los datos de tu invitación. Empezamos a diseñarla y te escribimos por WhatsApp si nos falta algo.',
+    'client_email_field' => 'host_email',
+    'list_fields' => ['title', 'host_name'],
     'steps' => [
         [
-            'id' => 'plan', 'title' => 'Tu invitación', 'description' => 'Elegí el plan y el estilo que más te gusta de la colección.',
+            'id' => 'contacto', 'title' => 'Tus datos', 'description' => 'Para hablar con vos. No aparecen en la invitación.',
             'fields' => [
-                F('email', 'email', 'Correo electrónico', ['required' => true, 'layout' => 'half']),
-                F('text', 'contacto', 'Tu nombre', ['required' => true, 'layout' => 'half']),
-                F('radio', 'plan', 'Plan', ['required' => true, 'cards' => true, 'options' => O([
-                    ['digital', 'Invitación digital · $45.000', 'Portada, cuenta regresiva, ubicación, confirmación de asistencia, dress code, regalos, cronograma y galería. Entrega en 48 hs hábiles.'],
-                    ['interactiva', 'Experiencia interactiva · $70.000', 'Todo lo de la Invitación digital, más trivia personalizada y cápsula de mensajes de tus invitados. Entrega en 72 hs hábiles.'],
-                ])]),
-                F('radio', 'categoria', 'Tipo de celebración', ['required' => true, 'options' => O(['XV años', 'Bodas', 'Egresados', 'Evento especial'])]),
-                F('text', 'muestra', '¿Qué diseño de la colección te gustó?', ['help' => 'Escribí el nombre de la muestra en queplanazo.jemaic.com (por ejemplo “Valentina” o “Sí, con vos. Siempre.”), o contanos una idea propia.']),
-                F('radio', 'mascota', 'Compañía para tu invitación', ['help' => 'Un pequeño cómplice que pasea con tus invitados (se puede prender o apagar).', 'other' => true,
-                    'options' => O(['Sin compañía', 'Perrito', 'Gatito', 'Ballenita austral'])]),
+                F('text', 'host_name', 'Tu nombre (o el de la familia)', ['required' => true, 'max' => 120, 'placeholder' => 'Ej.: Familia de Lucía']),
+                F('email', 'host_email', 'Tu email', ['required' => true, 'max' => 255, 'help' => 'Con este email vas a entrar a ver tus invitados.']),
+                F('tel', 'host_phone', 'WhatsApp para recibir las confirmaciones', ['required' => true, 'normalize' => 'digits', 'max' => 25, 'placeholder' => '+54 9 280 412 3456', 'help' => 'Con código de país. Podés escribirlo como quieras: lo acomodamos solo.']),
             ],
         ],
         [
-            'id' => 'evento', 'title' => 'El evento', 'description' => 'Los datos que van en la portada y en la información de tu invitación.',
+            'id' => 'celebracion', 'title' => 'La celebración', 'description' => 'Lo básico de tu evento.',
             'fields' => [
-                F('text', 'homenajeados', 'Nombre/s del/los homenajead@/s', ['required' => true]),
-                F('select', 'tipo_evento', 'Tipo de evento', ['other' => true, 'options' => O(['Cumpleaños', '15 años', 'Boda', 'Egreso', 'Aniversario']), 'layout' => 'half']),
-                F('date', 'dia', 'Día del evento', ['required' => true, 'layout' => 'half']),
-                F('time', 'hora', 'Hora del evento', ['required' => true, 'layout' => 'half']),
-                F('text', 'salon', 'Nombre del salón', ['layout' => 'half']),
-                F('text', 'ubicacion', 'Ubicación del evento', ['help' => 'Dirección, ciudad, punto de referencia.']),
-                F('url', 'maps', 'Link de Google Maps', ['help' => 'Opcional. Pegá un link de Google Maps para la ubicación.']),
-                F('textarea', 'ceremonia', '¿La ceremonia es en otro lugar o momento?', ['help' => 'Si aplica: dirección, horario y fecha.', 'rows' => 2]),
-                F('radio', 'dress_code', 'Código de vestimenta', ['cards' => true, 'options' => O(['Elegante', 'Elegante sport', 'Otro / no aplica'])]),
-                F('textarea', 'cronograma', 'Cronograma del evento', ['help' => 'Opcional. Hora y actividad, una por línea (recepción, cena, baile…).', 'rows' => 4]),
-                F('textarea', 'info_importante', 'Información importante para tus invitados', ['help' => 'Opcional. Por ejemplo: estacionamiento, niños, cómo llegar.', 'rows' => 3]),
+                F('radio', 'category', '¿Qué celebran?', ['required' => true, 'options' => $pick([['quince', 'XV años'], ['boda', 'Boda'], ['egresados', 'Egresados'], ['evento', 'Evento especial']])]),
+                F('text', 'title', 'Nombre que va en la invitación', ['required' => true, 'max' => 120, 'placeholder' => 'Ej.: Lucía · Ana & Nico · Promo 2027']),
+                F('datetime', 'starts_at', 'Fecha y hora del evento', ['required' => true, 'layout' => 'half', 'help' => 'Hora de Argentina.']),
+                F('datetime', 'deadline', 'Fecha límite para confirmar asistencia', ['required' => true, 'layout' => 'half', 'help' => 'Tiene que ser antes del evento. Te sugerimos 10 días antes.',
+                    'rule' => ['type' => 'before', 'ref' => 'starts_at', 'suggest_days' => 10, 'message' => 'La fecha límite tiene que ser antes del evento.']]),
             ],
         ],
         [
-            'id' => 'invitados', 'title' => 'Confirmación y contacto', 'description' => 'Cómo confirman tus invitados y cómo te encontramos.',
+            'id' => 'estilo', 'title' => 'El estilo', 'description' => 'Todo es opcional: si no sabés, dejá “Que lo elija Jema” y nosotros lo elegimos por vos.',
             'fields' => [
-                F('checkbox', 'rsvp', '¿Qué querés preguntarle a tus invitados al confirmar?', ['options' => O([
-                    'Asistencia y cantidad de personas', 'Menú', 'Alergias o restricciones alimentarias', 'Canción favorita para la playlist',
-                ])]),
-                F('textarea', 'menu_opciones', 'Opciones de menú', ['help' => 'Una por línea (ej: Clásico, Vegetariano, Celíaco).', 'rows' => 3, 'show_if' => ['field' => 'rsvp', 'equals' => 'Menú']]),
-                F('tel', 'wa_confirmacion', 'WhatsApp para CONFIRMACIONES', ['required' => true, 'help' => 'Número al que llegan las confirmaciones.', 'placeholder' => '+54 9 280 xxxx xxxx', 'layout' => 'half']),
-                F('tel', 'wa_datos', 'WhatsApp para DATOS IMPORTANTES y MÚSICA', ['help' => 'Número de contacto alternativo.', 'layout' => 'half']),
-                F('text', 'instagram', 'Instagram del/los agasajad@/s', ['help' => 'Usuario sin @ o link al perfil.']),
+                ['type' => 'info', 'name' => 'info_coleccion', 'label' => '¿Querés ver los diseños en acción?', 'help' => 'Mirá la colección completa antes de elegir.', 'link' => 'https://queplanazo.jemaic.com/#coleccion', 'link_label' => 'Ver la colección'],
+                F('radio', 'theme', 'Diseño de portada', ['default' => 'jema', 'help' => 'Cómo se acomodan los textos y la foto.', 'options' => $img($themes, 'sample-covers/', '-small.webp')]),
+                F('radio', 'look', 'Estilo general', ['default' => 'jema', 'help' => 'Colores, letras y detalles listos para usar.', 'options' => $looks]),
+                F('colors', 'colors', 'Tus colores', ['required' => true, 'need' => 3, 'hex' => true, 'slots' => ['Letra', 'Acento', 'Fondo'],
+                    'help' => 'Tocá cada círculo para elegir en la rueda de colores, o pegá el código (HEX como #e9a9bb o RGB como 233,169,187). Abajo ves cómo quedan.',
+                    'show_if' => ['field' => 'look', 'equals' => 'propio']]),
+                F('radio', 'font_titles', 'Letra de los títulos', ['default' => 'jema', 'options' => $pick([$JEMA, ['script', 'Cursiva elegante'], ['script_soft', 'Cursiva romántica'], ['fine_serif', 'Fina clásica'], ['editorial', 'Editorial'], ['modern', 'Moderna'], ['theme', 'Como el diseño']])]),
+                F('radio', 'font_texts', 'Letra de los textos', ['default' => 'jema', 'options' => $pick([$JEMA, ['fine_sans', 'Fina y clara'], ['fine_serif', 'Fina clásica'], ['modern', 'Moderna'], ['classic', 'Clásica'], ['theme', 'Como el diseño']])]),
+                F('radio', 'motif_style', 'Detalle o adorno', ['default' => 'jema', 'options' => $pick([$JEMA, ['none', 'Sin adornos'], ['butterflies', 'Mariposas'], ['flowers', 'Flores delicadas'], ['moon', 'Luna'], ['stars', 'Estrellas'], ['crown', 'Corona'], ['rings', 'Anillos'], ['cat', 'Gatito'], ['dog', 'Perrito'], ['music', 'Música'], ['disco', 'Disco']])]),
+                F('radio', 'metal_style', 'Detalles que brillan', ['default' => 'jema', 'options' => $pick([$JEMA, ['none', 'Sin brillo'], ['silver', 'Plateado'], ['gold', 'Dorado'], ['rose', 'Oro rosa']])]),
+                F('radio', 'background_style', 'Fondo decorativo suave', ['default' => 'jema', 'img_shape' => 'square', 'options' => $img($backgrounds, 'backgrounds/', '.svg')]),
+                F('file', 'background_photo', '¿Querés una foto suave de fondo detrás de toda la invitación?', ['max_files' => 1, 'ext' => $IMG_EXT, 'max_mb' => 12, 'compress' => true, 'file_word' => 'una foto', 'help' => 'Opcional.']),
+                F('radio', 'mascot_style', 'Mascota virtual que acompaña a los invitados', ['default' => 'jema', 'options' => $pick([$JEMA, ['none', 'Sin mascota'], ['whale', 'Ballenita austral'], ['dog', 'Perrito'], ['cat', 'Gatito']])]),
             ],
         ],
         [
-            'id' => 'fotos', 'title' => 'Fotos y música', 'description' => 'Las imágenes y la canción que cuentan tu historia.',
+            'id' => 'portada', 'title' => 'Portada', 'description' => 'Lo primero que ven tus invitados.',
             'fields' => [
-                INFO('info_album', 'Si preferís cargar las fotos elegidas en un álbum de Google Fotos, pedíselo a la coordinadora por WhatsApp: 280 434-3587.', 'Álbum de fotos'),
-                F('file', 'fotos', 'Subí tus fotos', ['help' => 'Podés subir varias imágenes a la vez.', 'accept' => 'image/*']),
-                F('url', 'album', 'Link a carpeta o álbum (Google Fotos, Drive u otro)', ['help' => 'Si ya tenés un álbum listo con TODAS las imágenes organizadas.']),
-                F('textarea', 'comentarios_imagenes', 'Comentarios sobre las imágenes', ['help' => 'Opcional. Aclarar si alguna imagen NO va, orden sugerido, etc.', 'rows' => 2]),
-                F('text', 'cancion', 'Canción de fondo', ['help' => 'Tema y artista, o un link.', 'layout' => 'half']),
-                F('url', 'spotify', 'Lista de Spotify', ['help' => 'Pegá el link de la playlist colaborativa.', 'layout' => 'half']),
+                F('file', 'cover_photo', 'Foto de portada', ['required' => true, 'max_files' => 1, 'ext' => $IMG_EXT, 'max_mb' => 12, 'compress' => true, 'link_alt' => true, 'file_word' => 'una foto',
+                    'help' => 'Mejor vertical y bien iluminada. También podés pegar un link de Drive, Google Fotos o WeTransfer.']),
+                F('text', 'greeting', 'Frase pequeña de apertura', ['required' => true, 'max' => 120, 'placeholder' => 'Ej.: Te invito a celebrar mis XV']),
+                F('text', 'tagline', 'Frase principal', ['required' => true, 'max' => 160, 'placeholder' => 'Ej.: Una noche mágica para celebrar juntos']),
             ],
         ],
         [
-            'id' => 'textos', 'title' => 'Textos y regalos', 'description' => 'Las palabras de tu invitación.',
+            'id' => 'countdown', 'title' => 'Cuenta regresiva', 'description' => 'Un reloj con los días que faltan. Usa la fecha que pusiste antes.',
             'fields' => [
-                F('textarea', 'frase_whatsapp', 'Frase de invitación para WhatsApp', ['help' => 'Texto corto para enviar por WhatsApp junto con la portada.', 'rows' => 2]),
-                F('textarea', 'frase_tarjeta', 'Frase de invitación para la tarjeta', ['help' => 'Breve o extensa: es el texto que va dentro de la invitación.', 'rows' => 4]),
-                INFO('info_regalos', 'Completá lo que corresponda. Podés usar uno o varios métodos. Todo es opcional.', 'Regalos'),
-                F('url', 'regalo_mp', 'Link de regalo económico (Mercado Pago)'),
-                F('text', 'regalo_alias', 'Alias', ['layout' => 'half']),
-                F('text', 'regalo_cbu', 'CBU / CVU', ['layout' => 'half', 'help' => 'Solo si querés que figure en la invitación.']),
+                F('switch', 'sec_countdown', 'Quiero esta sección'),
+                F('radio', 'countdown_style', 'Estilo del reloj', ['required' => true, 'show_if' => $on('countdown'), 'options' => $pick([['glass', 'Cristal'], ['editorial', 'Editorial'], ['rings', 'Órbitas']])]),
             ],
         ],
         [
-            'id' => 'interactiva', 'title' => 'Experiencia interactiva', 'description' => 'Trivia y cápsula de mensajes.',
-            'show_if' => ['field' => 'plan', 'equals' => 'interactiva'],
+            'id' => 'historia', 'title' => 'Historia o mensaje', 'description' => 'Unas palabras para tus invitados.',
             'fields' => [
-                F('textarea', 'trivia', 'Preguntas para la trivia', ['rows' => 8, 'help' => 'Preguntas divertidas sobre los protagonistas. Idealmente 5 a 10: escribí cada pregunta con su respuesta correcta y 2 o 3 opciones incorrectas.']),
-                F('textarea', 'capsula', 'Mensaje de bienvenida para la cápsula', ['rows' => 3, 'help' => 'Opcional. Tus invitados dejan mensajes que se desbloquean el día de la celebración.']),
+                F('switch', 'sec_intro', 'Quiero esta sección'),
+                F('textarea', 'intro', 'Tu mensaje o historia para los invitados', ['required' => true, 'max' => 1500, 'rows' => 6, 'show_if' => $on('intro'),
+                    'placeholder' => 'Ej.: Hay noches que se sueñan durante años. Esta es la mía, y quiero vivirla con vos.']),
             ],
         ],
         [
-            'id' => 'estilo', 'title' => 'Estilo visual', 'description' => 'Colores, motivos y referencias para diseñar a tu medida.',
+            'id' => 'galeria', 'title' => 'Galería de fotos', 'description' => 'Pueden ser verticales o apaisadas: la galería respeta su forma.',
             'fields' => [
-                F('palette', 'paletas', 'Paletas sugeridas', ['help' => 'Elegí alguna como guía (podés combinar).', 'options' => $paletas]),
-                F('colors', 'colores', 'Colores principales', ['help' => 'Elegí 2 principales y 1 para detalles.']),
-                F('file', 'fotos_paleta', 'Fotos con la paleta de colores deseada', ['help' => 'Opcional.', 'accept' => 'image/*']),
-                F('text', 'motivos', 'Motivos / iconografía', ['help' => 'Ej: coronas, mariposas, flores, olivo, estrellas, minimal…']),
-                F('textarea', 'estetica', 'Estética y referencias', ['help' => 'Opcional. Links a Pinterest / Instagram o palabras clave del estilo que te gusta.', 'rows' => 3]),
+                F('switch', 'sec_gallery', 'Quiero esta sección'),
+                F('text', 'gallery_title', 'Título de la galería', ['max' => 100, 'placeholder' => 'Pedacitos de nuestra historia', 'help' => 'Opcional. Si lo dejás vacío usamos “Pedacitos de nuestra historia”.', 'show_if' => $on('gallery')]),
+                F('file', 'gallery_photos', 'Tus fotos', ['required' => true, 'max_files' => 12, 'ext' => $IMG_EXT, 'max_mb' => 12, 'compress' => true, 'link_alt' => true, 'captions' => true, 'caption_max' => 160,
+                    'file_word_plural' => 'tus fotos', 'link_placeholder' => 'Link a una carpeta (Drive, Google Fotos, WeTransfer)',
+                    'help' => 'Hasta 12 fotos. Podés sumarles un texto corto a cada una (opcional).', 'show_if' => $on('gallery')]),
             ],
         ],
         [
-            'id' => 'cierre', 'title' => 'Plazos y comentarios', 'description' => 'Último paso.',
+            'id' => 'lugar', 'title' => 'Lugar, horarios y vestimenta', 'description' => 'Dónde y cuándo pasa cada cosa.',
             'fields' => [
-                F('date', 'fecha_publicacion', 'Fecha objetivo de publicación', ['help' => 'Opcional. Una fecha tentativa para difundir la invitación.']),
-                INFO('info_plazos', 'Los plazos corren desde que recibimos tus fotos y los datos del evento: 48 hs hábiles para la Invitación digital y 72 hs hábiles para la Experiencia interactiva. Si necesitás fast-track, avisanos en los comentarios.', 'Importante'),
-                F('textarea', 'comentarios', 'Comentarios finales / secciones que NO van', ['help' => 'Aclarar si alguna sección no aplica o preferís omitirla.', 'rows' => 3]),
+                F('switch', 'sec_details', 'Quiero esta sección'),
+                F('text', 'venue', 'Nombre del lugar', ['required' => true, 'max' => 160, 'placeholder' => 'Ej.: Salón Las Camelias', 'show_if' => $on('details')]),
+                F('text', 'address', 'Dirección (calle, número y ciudad)', ['required' => true, 'max' => 240, 'map' => true, 'placeholder' => 'Ej.: Av. Roca 123, Puerto Madryn, Chubut', 'show_if' => $on('details')]),
+                F('text', 'dress', 'Vestimenta', ['max' => 300, 'help' => 'Opcional.', 'placeholder' => 'Ej.: Elegante · el rosa queda reservado para la quinceañera', 'show_if' => $on('details')]),
+                ['type' => 'repeater', 'name' => 'schedule', 'label' => 'Momentos del evento', 'required' => true, 'help' => 'Hasta 6. Ej.: 21:30 Recepción · 23:00 Vals · 00:00 Torta.',
+                    'row_label' => 'Momento', 'add_label' => 'Agregar momento', 'min_rows' => 1, 'max_rows' => 6, 'show_if' => $on('details'),
+                    'fields' => [
+                        ['name' => 'time', 'label' => 'Hora', 'type' => 'time', 'required' => true],
+                        ['name' => 'label', 'label' => 'Qué pasa', 'type' => 'text', 'required' => true, 'max' => 100, 'placeholder' => 'Recepción'],
+                    ]],
+            ],
+        ],
+        [
+            'id' => 'trivia', 'title' => 'Trivia', 'description' => 'Preguntas divertidas sobre quien se celebra. De 1 a 5.',
+            'fields' => [
+                F('switch', 'sec_trivia', 'Quiero esta sección'),
+                ['type' => 'repeater', 'name' => 'trivia', 'label' => 'Preguntas', 'required' => true, 'help' => 'Escribí la pregunta, tres opciones y marcá cuál es la correcta.',
+                    'row_label' => 'Pregunta', 'add_label' => 'Agregar pregunta', 'min_rows' => 1, 'max_rows' => 5, 'show_if' => $on('trivia'),
+                    'fields' => [
+                        ['name' => 'question', 'label' => 'Pregunta', 'type' => 'text', 'required' => true, 'max' => 220, 'wide' => true, 'placeholder' => '¿Cuál es mi color favorito?'],
+                        ['name' => 'a', 'label' => 'Opción A', 'type' => 'text', 'required' => true, 'max' => 120, 'wide' => true],
+                        ['name' => 'b', 'label' => 'Opción B', 'type' => 'text', 'required' => true, 'max' => 120, 'wide' => true],
+                        ['name' => 'c', 'label' => 'Opción C', 'type' => 'text', 'required' => true, 'max' => 120, 'wide' => true],
+                        ['name' => 'correct', 'label' => '¿Cuál es la correcta?', 'short' => 'Correcta', 'type' => 'select', 'required' => true, 'wide' => true,
+                            'options' => [['value' => '0', 'label' => 'A'], ['value' => '1', 'label' => 'B'], ['value' => '2', 'label' => 'C']]],
+                    ]],
+            ],
+        ],
+        [
+            'id' => 'capsula', 'title' => 'Cápsula de mensajes', 'description' => 'Tus invitados te dejan mensajes que se abren recién el día del evento.',
+            'fields' => [
+                F('switch', 'sec_capsule', 'Quiero esta sección', ['help' => 'No hay que completar nada más.']),
+            ],
+        ],
+        [
+            'id' => 'extras', 'title' => 'Música y regalos', 'description' => 'Todo opcional dentro de esta sección.',
+            'fields' => [
+                F('switch', 'sec_extras', 'Quiero esta sección'),
+                F('url', 'music_url', 'Link de tu playlist o canción', ['max' => 500, 'placeholder' => 'https://open.spotify.com/…', 'help' => 'Spotify, YouTube Music, etc.', 'show_if' => $on('extras')]),
+                F('file', 'audio', '¿Querés música sonando en la invitación? Subí la canción', ['max_files' => 1, 'ext' => ['mp3', 'm4a'], 'max_mb' => 12, 'file_word' => 'la canción', 'show_if' => $on('extras')]),
+                F('text', 'audio_title', 'Nombre de la canción', ['max' => 100, 'placeholder' => 'Ej.: A thousand years', 'show_if' => $on('extras')]),
+                F('textarea', 'gift', 'Regalos: alias o CBU, o un mensaje', ['max' => 500, 'rows' => 3, 'placeholder' => 'Ej.: Tu presencia es el mejor regalo 💝 Alias: lucia.xv', 'show_if' => $on('extras')]),
+            ],
+        ],
+        [
+            'id' => 'rsvp', 'title' => 'Confirmación de asistencia', 'description' => 'Las confirmaciones te llegan al WhatsApp que pusiste al principio.',
+            'fields' => [
+                F('switch', 'sec_rsvp', 'Quiero esta sección'),
+                F('checkbox', 'menus', '¿Qué opciones de menú van a tener?', ['required' => true, 'min' => 1, 'max_count' => 8, 'show_if' => $on('rsvp'),
+                    'options' => O(['Clásico', 'Vegetariano', 'Vegano', 'Sin gluten', 'Infantil', 'Otro'])]),
+            ],
+        ],
+        [
+            'id' => 'revision', 'title' => 'Revisá y enviá', 'description' => 'Fijate que esté todo bien. Con “Editar” volvés a cualquier paso.', 'review' => true,
+            'fields' => [
+                F('consent', 'autorizacion', 'Revisé los datos y autorizo a Jema a usar estas fotos en mi invitación', ['required' => true]),
             ],
         ],
     ],
