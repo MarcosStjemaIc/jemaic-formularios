@@ -45,7 +45,7 @@ $backgrounds = [$JEMA, ['none', 'Sin decoración'], ['butterflies', 'Mariposas y
 $pick = fn(array $pairs) => array_map(fn($p) => ['value' => $p[0], 'label' => $p[1]], $pairs);
 
 return [
-    'version' => 2,
+    'version' => 3,
     'export' => 'queplanazo',
     'title' => 'Invitación digital',
     'subtitle' => 'Qué Planazo · por Jema',
@@ -81,7 +81,7 @@ return [
             'id' => 'estilo', 'title' => 'El estilo', 'description' => 'Todo es opcional: si no sabés, dejá “Que lo elija Jema” y nosotros lo elegimos por vos.',
             'fields' => [
                 ['type' => 'info', 'name' => 'info_coleccion', 'label' => '¿Querés ver los diseños en acción?', 'help' => 'Mirá la colección completa antes de elegir.', 'link' => 'https://queplanazo.jemaic.com/#coleccion', 'link_label' => 'Ver la colección'],
-                F('radio', 'theme', 'Diseño de portada', ['default' => 'jema', 'help' => 'Cómo se acomodan los textos y la foto.', 'options' => $img($themes, 'sample-covers/', '-small.webp')]),
+                F('radio', 'theme', 'Diseño de portada', ['default' => 'jema', 'img_shape' => 'tall', 'help' => 'Cómo se acomodan los textos y la foto. Tocá la que más te guste.', 'options' => array_map(fn($o) => isset($o['img']) ? ['img' => '/assets/covers/' . $o['value'] . '.webp'] + $o : $o, $img($themes, 'sample-covers/', '-small.webp'))]),
                 F('radio', 'look', 'Estilo general', ['default' => 'jema', 'help' => 'Colores, letras y detalles listos para usar.', 'options' => $looks]),
                 F('colors', 'colors', 'Tus colores', ['required' => true, 'need' => 3, 'hex' => true, 'slots' => ['Letra', 'Acento', 'Fondo'],
                     'help' => 'Tocá cada círculo para elegir en la rueda de colores, o pegá el código (HEX como #e9a9bb o RGB como 233,169,187). Abajo ves cómo quedan.',

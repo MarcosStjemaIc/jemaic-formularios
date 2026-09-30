@@ -87,3 +87,8 @@ Recomendado: hacer una copia de la base de datos y de `storage/uploads` de vez e
 | 404 en `/f/...` | Falta el `.htaccess` (archivo oculto) en la carpeta del subdominio. |
 | No suben fotos grandes | Subí `upload_max_filesize` y `post_max_size` en hPanel → *Configuración de PHP*. |
 | No llegan los emails | Mirá `storage/logs/error.log` y revisá la carpeta de spam; probá puerto 587/tls. |
+
+## Portadas de la invitación digital
+Las imágenes de `assets/covers/` (una por diseño de Qué Planazo) están en el servidor y no en este repositorio:
+se generaron a partir de la colección de queplanazo.jemaic.com. Si se reinstala desde cero, el formulario usa
+las fotos de muestra de queplanazo hasta que se vuelvan a copiar esas imágenes.

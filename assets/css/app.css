@@ -273,3 +273,5 @@ input:focus,select:focus,textarea:focus{outline:none;background:#fff;border-colo
 .review__off{margin:8px 0 0;color:var(--accent-ink);font-weight:600;font-size:.9rem}
 @media(max-width:480px){.review dl{grid-template-columns:1fr}.review dd{margin-bottom:6px}}
 .note__link{display:inline-block;margin-top:6px;font-weight:700;color:var(--accent-ink)}
+.choices--tall .choice__img{aspect-ratio:3/5;background:#f4efe9}
+.choices--tall .choice__img img{object-position:top center}

@@ -106,7 +106,7 @@ function seed_forms_if_empty(): void
 function upgrade_seeded_forms(): void
 {
     $marker = STORAGE_DIR . '/.forms_v2';
-    if (is_file($marker)) return;
+    if (is_file($marker)) { upgrade_theme_covers(); return; }
     $file = APP_DIR . '/seeds/invitacion-digital.php';
     $row = q_one('SELECT * FROM forms WHERE slug = ?', ['invitacion-digital']);
     if ($row && is_file($file)) {
@@ -117,6 +117,36 @@ function upgrade_seeded_forms(): void
             q('UPDATE forms SET title = ?, definition = ?, updated_at = ? WHERE id = ?', [$def['title'], json_encode($def, JSON_UNESCAPED_UNICODE), now(), $row['id']]);
             app_log('Formulario invitacion-digital actualizado a la versión 2 (copia anterior en storage/backup-invitacion-digital-v1.json).');
         }
+    }
+    @file_put_contents($marker, date('c'));
+    upgrade_theme_covers();
+}
+
+/** v3: las opciones de "Diseño de portada" muestran la portada completa (assets/covers). No toca nada más del formulario. */
+function upgrade_theme_covers(): void
+{
+    $marker = STORAGE_DIR . '/.forms_v3';
+    if (is_file($marker)) return;
+    $row = q_one('SELECT * FROM forms WHERE slug = ?', ['invitacion-digital']);
+    $def = $row ? json_decode((string) $row['definition'], true) : null;
+    if (is_array($def) && (int) ($def['version'] ?? 1) === 2) {
+        foreach ($def['steps'] as &$st) {
+            foreach ($st['fields'] as &$f) {
+                if (($f['name'] ?? '') !== 'theme' || empty($f['options'])) continue;
+                $f['img_shape'] = 'tall';
+                foreach ($f['options'] as &$o) {
+                    if (!empty($o['img']) && preg_match('#/sample-covers/([a-z]+)-small\.webp$#', (string) $o['img'], $m) && is_file(APP_ROOT . '/assets/covers/' . $m[1] . '.webp')) {
+                        $o['img'] = '/assets/covers/' . $m[1] . '.webp';
+                    }
+                }
+                unset($o);
+            }
+            unset($f);
+        }
+        unset($st);
+        $def['version'] = 3;
+        q('UPDATE forms SET definition = ?, updated_at = ? WHERE id = ?', [json_encode($def, JSON_UNESCAPED_UNICODE), now(), $row['id']]);
+        app_log('Invitación digital: portadas completas en "Diseño de portada" (v3).');
     }
     @file_put_contents($marker, date('c'));
 }
