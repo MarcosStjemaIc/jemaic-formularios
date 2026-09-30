@@ -14,7 +14,7 @@ return [
     'subtitle' => 'Qué Planazo · por Jema',
     'brand' => 'planazo',
     'icon' => 'card',
-    'accent' => '#9a513a',
+    'accent' => '',
     'intro' => 'Armemos tu invitación. Contanos los datos de tu evento, tus fotos, tus colores y tu historia: nosotros la diseñamos. Todos los datos son opcionales salvo los marcados; si algo no aplica, dejalo en blanco o aclaralo en los comentarios.',
     'submit_label' => 'Enviar datos de mi invitación',
     'thanks_title' => '¡Listo! Ya podemos armar tu invitación',

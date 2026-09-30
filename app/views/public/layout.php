@@ -6,7 +6,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title><?= h($pageTitle ?? cfg('app_name', 'Jema')) ?> · <?= h(cfg('app_name', 'Jema')) ?></title>
 <meta name="robots" content="noindex">
-<meta name="theme-color" content="#f8f5ee">
+<meta name="theme-color" content="#f0efed">
 <?php
   // Vista previa al compartir el enlace (WhatsApp, Instagram, etc.)
   $ogTitle = ($pageTitle ?? 'Formularios') . ' · ' . cfg('app_name', 'Jema');
@@ -24,13 +24,12 @@
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="icon" type="image/png" href="<?= h(asset('brand/Favicon.png')) ?>">
 <link rel="stylesheet" href="<?= h(asset('css/app.css')) ?>">
-<?php if (!empty($accent)): ?><style>:root{--accent:<?= h($accent) ?>}</style><?php endif; ?>
+<?php if (!empty($accent) && !in_array(strtolower($accent), ['#9a513a', '#d34e18'], true)): ?><style>:root{--accent:<?= h($accent) ?>}</style><?php endif; ?>
 </head>
 <body class="<?= h($bodyClass ?? '') ?>">
+<div class="atmosphere" aria-hidden="true"></div>
 <header class="top">
   <a class="top__brand" href="<?= h(url('/')) ?>" aria-label="Inicio"><?= brand_html($brand ?? 'jema') ?></a>
   <?php if (!empty($topRight)): ?><span class="top__right"><?= $topRight ?></span><?php endif; ?>

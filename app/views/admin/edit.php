@@ -35,13 +35,23 @@
       <div class="field"><label class="label" for="brand">Marca en la cabecera</label>
         <select id="brand" name="brand"><option value="jema" <?= $def['brand'] === 'jema' ? 'selected' : '' ?>>Jema Imagen Creativa</option><option value="planazo" <?= $def['brand'] === 'planazo' ? 'selected' : '' ?>>Qué Planazo · por Jema</option></select></div>
       <div class="field"><label class="label" for="accent">Color de acento</label>
-        <input type="color" id="accent" name="accent" value="<?= h($def['accent'] ?: '#9a513a') ?>"></div>
+        <input type="color" id="accent" name="accent" value="<?= h(($def['accent'] && strtolower($def['accent']) !== '#9a513a') ? $def['accent'] : '#d34e18') ?>"></div>
     </div>
   </section>
 
   <section class="ecard">
     <h2>Preguntas</h2>
-    <p class="help">Armá los pasos y los campos. Podés mostrar un paso o una pregunta solo si respondieron algo antes (“Mostrar solo si…”).</p>
+    <div class="ehelp">
+      <div>
+        <b>Cómo se edita</b>
+        <ul>
+          <li>Tocá una pregunta (<b>Editar ▾</b>) para cambiar el texto, las opciones o si es obligatoria.</li>
+          <li><b>Borrar pregunta</b> / <b>Borrar paso</b> la quita del formulario. <b>Subir</b> y <b>Bajar</b> cambian el orden.</li>
+          <li>Para sumar una pregunta, elegí el tipo abajo de cada paso y tocá <b>+ Agregar pregunta</b>.</li>
+          <li>Nada se publica hasta que tocás <b>Guardar cambios</b>. Las respuestas que ya llegaron no se modifican.</li>
+        </ul>
+      </div>
+    </div>
     <div id="builder" class="builder"><p class="help">Cargando editor…</p></div>
     <noscript><p class="alert">El editor necesita JavaScript activado.</p></noscript>
     <details class="adv">

@@ -5,7 +5,7 @@ return [
     'title' => 'Información previa al evento',
     'subtitle' => 'Fotografía y filmación',
     'icon' => 'camera',
-    'accent' => '#9a513a',
+    'accent' => '',
     'intro' => 'Completá los detalles de tu evento para que podamos coordinar la fotografía y la filmación con precisión. Te lleva unos 5 minutos.',
     'submit_label' => 'Enviar información',
     'thanks_title' => '¡Gracias! Ya tenemos la información de tu evento',

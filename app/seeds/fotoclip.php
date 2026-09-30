@@ -7,7 +7,7 @@ return [
     'title' => 'Fotoclip',
     'subtitle' => 'Tus fotos, animadas y con música',
     'icon' => 'film',
-    'accent' => '#9a513a',
+    'accent' => '',
     'intro' => 'Elegí el modelo de Fotoclip y completá la información. Importante: el álbum/material debe estar COMPLETO 5 días hábiles antes del evento para lograr una edición satisfactoria.',
     'submit_label' => 'Enviar pedido de Fotoclip',
     'thanks_title' => '¡Gracias! Recibimos tu pedido de Fotoclip',

@@ -7,7 +7,7 @@ return [
     'title' => 'Pre-sesión fotográfica',
     'subtitle' => '15 años & Bodas',
     'icon' => 'heart',
-    'accent' => '#9a513a',
+    'accent' => '',
     'intro' => 'Organicemos tu pre-sesión: contanos tu estilo, la locación, el vestuario y las referencias que te gustan. Importante: la pre-sesión debe realizarse al menos 15 días antes del evento principal.',
     'submit_label' => 'Enviar pre-sesión',
     'thanks_title' => '¡Gracias! Ya podemos empezar a planear tu pre-sesión',

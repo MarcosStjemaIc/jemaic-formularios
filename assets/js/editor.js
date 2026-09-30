@@ -105,10 +105,10 @@
       (f.required ? '<span class="fld__req">obligatorio</span>' : '') +
       (f.show_if ? '<span class="fld__cond">condicional</span>' : '') +
       '</button><span class="fld__tools">' +
-      '<button type="button" title="Subir" data-act="field-up" data-s="' + si + '" data-f="' + fi + '"' + (fi === 0 ? ' disabled' : '') + '>↑</button>' +
-      '<button type="button" title="Bajar" data-act="field-down" data-s="' + si + '" data-f="' + fi + '"' + (fi === total - 1 ? ' disabled' : '') + '>↓</button>' +
-      '<button type="button" title="Duplicar" data-act="field-dup" data-s="' + si + '" data-f="' + fi + '">⧉</button>' +
-      '<button type="button" title="Quitar" class="danger" data-act="field-del" data-s="' + si + '" data-f="' + fi + '">✕</button></span></div>';
+      '<button type="button" title="Subir" data-act="field-up" data-s="' + si + '" data-f="' + fi + '"' + (fi === 0 ? ' disabled' : '') + '>↑ Subir</button>' +
+      '<button type="button" title="Bajar" data-act="field-down" data-s="' + si + '" data-f="' + fi + '"' + (fi === total - 1 ? ' disabled' : '') + '>↓ Bajar</button>' +
+      '<button type="button" title="Duplicar" data-act="field-dup" data-s="' + si + '" data-f="' + fi + '">Duplicar</button>' +
+      '<button type="button" title="Borrar pregunta" class="danger" data-act="field-del" data-s="' + si + '" data-f="' + fi + '">Borrar pregunta</button></span></div>';
     if (!open) return '<li class="fld">' + head + '</li>';
 
     var body = '<div class="fld__body">';
@@ -150,19 +150,19 @@
     return '<div class="stp">' +
       '<div class="stp__head"><span class="stp__num">Paso ' + (si + 1) + '</span>' +
       '<div class="stp__tools">' +
-      '<button type="button" title="Subir paso" data-act="step-up" data-s="' + si + '"' + (si === 0 ? ' disabled' : '') + '>↑</button>' +
-      '<button type="button" title="Bajar paso" data-act="step-down" data-s="' + si + '"' + (si === steps.length - 1 ? ' disabled' : '') + '>↓</button>' +
-      '<button type="button" title="Quitar paso" class="danger" data-act="step-del" data-s="' + si + '">Quitar paso</button></div></div>' +
+      '<button type="button" title="Subir paso" data-act="step-up" data-s="' + si + '"' + (si === 0 ? ' disabled' : '') + '>↑ Subir paso</button>' +
+      '<button type="button" title="Bajar paso" data-act="step-down" data-s="' + si + '"' + (si === steps.length - 1 ? ' disabled' : '') + '>↓ Bajar paso</button>' +
+      '<button type="button" title="Borrar paso" class="danger" data-act="step-del" data-s="' + si + '">Borrar paso</button></div></div>' +
       '<div class="egrid egrid--tight">' +
       '<div class="field"><label class="label">Título del paso</label><input type="text" data-bind="' + p + '.title" value="' + esc(s.title) + '"></div>' +
       '<div class="field"><label class="label">Descripción</label><input type="text" data-bind="' + p + '.description" value="' + esc(s.description) + '"></div>' +
       '<div class="field field--wide">' + condHtml(s, p, '') + '</div></div>' +
       '<ul class="flds">' + fields + '</ul>' +
-      '<div class="addrow"><select data-newtype="' + si + '">' + typeAdd + '</select><button type="button" class="btn btn--ghost btn--sm" data-act="field-add" data-s="' + si + '">+ Agregar campo</button></div></div>';
+      '<div class="addrow"><select data-newtype="' + si + '">' + typeAdd + '</select><button type="button" class="btn btn--ghost btn--sm" data-act="field-add" data-s="' + si + '">+ Agregar pregunta</button></div></div>';
   }
 
   function render() {
-    root.innerHTML = steps.map(stepHtml).join('') + '<button type="button" class="btn btn--ghost btn--sm addstep" data-act="step-add">+ Agregar paso</button>';
+    root.innerHTML = steps.map(stepHtml).join('') + '<button type="button" class="btn btn--ghost btn--sm addstep" data-act="step-add">+ Agregar un paso nuevo</button>';
     refreshMeta();
     adv.value = JSON.stringify(clean(steps), null, 2);
   }
@@ -261,7 +261,7 @@
       case 'field-down': swap(s.fields, fi, fi + 1); break;
       case 'field-dup': var c = clone(clean(s.fields[fi])); c.name = uniqueName(c.name); c.label = (c.label || '') + ' (copia)'; c._open = true; s.fields.splice(fi + 1, 0, c); break;
       case 'field-del':
-        if (!confirm('¿Quitar este campo? Las respuestas anteriores lo conservan igual.')) return;
+        if (!confirm('¿Borrar esta pregunta?\n\nLas respuestas que ya llegaron no se pierden. El cambio se aplica cuando tocás «Guardar cambios».')) return;
         s.fields.splice(fi, 1); break;
       case 'field-add':
         var type = root.querySelector('[data-newtype="' + si + '"]').value;
@@ -270,7 +270,7 @@
       case 'step-up': swap(steps, si, si - 1); break;
       case 'step-down': swap(steps, si, si + 1); break;
       case 'step-del':
-        if (!confirm('¿Quitar este paso y todos sus campos?')) return;
+        if (!confirm('¿Borrar este paso con todas sus preguntas?\n\nLas respuestas que ya llegaron no se pierden. El cambio se aplica cuando tocás «Guardar cambios».')) return;
         steps.splice(si, 1); break;
       case 'step-add': steps.push({ id: 'paso-' + (steps.length + 1) + '-' + Math.random().toString(36).slice(2, 5), title: 'Nuevo paso', description: '', fields: [] }); break;
     }

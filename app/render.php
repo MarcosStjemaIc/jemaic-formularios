@@ -12,7 +12,7 @@ function brand_html(string $brand = 'jema'): string
     if ($brand === 'planazo') {
         return '<span class="brand brand--planazo"><span class="brand__main">qué<b>planazo!</b></span><small>POR JEMA</small></span>';
     }
-    return '<span class="brand"><span class="brand__main"><b>jema</b></span><small>IMAGEN CREATIVA</small></span>';
+    return '<span class="brand"><span class="brand__main">Jema</span><small>Imagen creativa</small></span>';
 }
 
 /** Título con la última palabra en cursiva de color (eco del sitio queplanazo). */
