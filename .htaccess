@@ -1,0 +1,34 @@
+# formularios.jemaic.com — Apache / LiteSpeed (Hostinger)
+Options -Indexes
+DirectoryIndex index.php
+
+# Nunca servir configuración, código interno, base local, logs ni archivos subidos
+<FilesMatch "^(config(\.sample)?\.php|\.gitignore|.*\.sqlite|.*\.md)$">
+    Require all denied
+</FilesMatch>
+RewriteEngine On
+RewriteRule ^(app|storage|tools)(/|$) - [F,L]
+
+# Forzar HTTPS
+RewriteCond %{HTTPS} !=on
+RewriteCond %{HTTP:X-Forwarded-Proto} !=https
+RewriteCond %{HTTP_HOST} !^(localhost|127\.0\.0\.1)
+RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+
+# Todo lo que no sea un archivo real (css, js, imágenes) va al controlador
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^ index.php [L,QSA]
+
+# Cabeceras de seguridad básicas
+<IfModule mod_headers.c>
+    Header always set X-Content-Type-Options "nosniff"
+    Header always set X-Frame-Options "SAMEORIGIN"
+    Header always set Referrer-Policy "strict-origin-when-cross-origin"
+</IfModule>
+
+# Subidas grandes (si el plan lo permite)
+<IfModule mod_php.c>
+    php_value upload_max_filesize 32M
+    php_value post_max_size 64M
+</IfModule>

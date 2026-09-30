@@ -1,0 +1,6 @@
+config.php
+storage/uploads/*
+storage/logs/*
+storage/*.sqlite
+!storage/uploads/.gitkeep
+!storage/logs/.gitkeep
