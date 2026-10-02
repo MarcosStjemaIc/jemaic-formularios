@@ -118,6 +118,7 @@ function normalize_options($opts): array
         if (!empty($o['desc'])) $item['desc'] = (string) $o['desc'];
         if (!empty($o['colors'])) $item['colors'] = array_values(array_filter((array) $o['colors'], fn($c) => preg_match('/^#[0-9a-fA-F]{6}$/', (string) $c)));
         if (!empty($o['img']) && preg_match('#^(https://|/)[^\s"\'<>]+$#', (string) $o['img'])) $item['img'] = (string) $o['img'];
+        if (!empty($o['demo']) && preg_match('/^(clock|font):[A-Za-z]{2,20}$/', (string) $o['demo'])) $item['demo'] = (string) $o['demo'];
         $out[] = $item;
     }
     return $out;

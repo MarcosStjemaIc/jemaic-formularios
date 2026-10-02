@@ -54,6 +54,7 @@
       if (p[1]) o.desc = p[1];
       if (p[2]) o.colors = p[2].split(',').map(function (c) { return c.trim(); }).filter(function (c) { return /^#[0-9a-fA-F]{6}$/.test(c); });
       if (old && old.img) o.img = old.img;
+      if (old && old.demo) o.demo = old.demo;
       if (seen[o.value]) return; seen[o.value] = 1;
       out.push(o);
     });

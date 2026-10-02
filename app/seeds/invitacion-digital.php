@@ -42,10 +42,10 @@ $backgrounds = [$JEMA, ['none', 'Sin decoración'], ['butterflies', 'Mariposas y
     ['stars', 'Polvo de estrellas'], ['silk', 'Seda en movimiento'], ['moonlight', 'Luz de luna'], ['cotton', 'Papel de algodón'],
     ['royal', 'Corona de seda'], ['vowlines', 'Lazos & promesas'], ['pawtrail', 'Huellitas'], ['discoglow', 'Disco & melodía']];
 
-$pick = fn(array $pairs) => array_map(fn($p) => ['value' => $p[0], 'label' => $p[1]], $pairs);
+$pick = fn(array $pairs) => array_map(fn($p) => ['value' => $p[0], 'label' => $p[1]] + (isset($p[2]) ? ['demo' => $p[2]] : []), $pairs);
 
 return [
-    'version' => 4,
+    'version' => 5,
     'export' => 'queplanazo',
     'title' => 'Invitación digital',
     'subtitle' => 'Qué Planazo · por Jema',
@@ -96,8 +96,8 @@ return [
         [
             'id' => 'detalles', 'title' => 'Letras y detalles', 'description' => 'Todo es opcional: si no sabés, dejá “Que lo elija Jema” y nosotros lo elegimos por vos.',
             'fields' => [
-                F('radio', 'font_titles', 'Letra de los títulos', ['default' => 'jema', 'options' => $pick([$JEMA, ['script', 'Cursiva elegante'], ['script_soft', 'Cursiva romántica'], ['fine_serif', 'Fina clásica'], ['editorial', 'Editorial'], ['modern', 'Moderna'], ['theme', 'Como el diseño']])]),
-                F('radio', 'font_texts', 'Letra de los textos', ['default' => 'jema', 'options' => $pick([$JEMA, ['fine_sans', 'Fina y clara'], ['fine_serif', 'Fina clásica'], ['modern', 'Moderna'], ['classic', 'Clásica'], ['theme', 'Como el diseño']])]),
+                F('radio', 'font_titles', 'Letra de los títulos', ['default' => 'jema', 'options' => $pick([$JEMA, ['script', 'Cursiva elegante', 'font:GreatVibes'], ['script_soft', 'Cursiva romántica', 'font:Parisienne'], ['fine_serif', 'Fina clásica', 'font:Cormorant'], ['editorial', 'Editorial', 'font:Editorial'], ['modern', 'Moderna', 'font:Manrope'], ['theme', 'Como el diseño']]), 'demo_text' => 'Lucía & Nico', 'help' => 'Así se vería el nombre en la invitación.']),
+                F('radio', 'font_texts', 'Letra de los textos', ['default' => 'jema', 'options' => $pick([$JEMA, ['fine_sans', 'Fina y clara', 'font:Jost'], ['fine_serif', 'Fina clásica', 'font:Cormorant'], ['modern', 'Moderna', 'font:Manrope'], ['classic', 'Clásica', 'font:Georgia'], ['theme', 'Como el diseño']]), 'demo_text' => 'Te esperamos para celebrar juntos', 'help' => 'Así se verían los textos de la invitación.']),
                 F('radio', 'motif_style', 'Detalle o adorno', ['default' => 'jema', 'options' => $pick([$JEMA, ['none', 'Sin adornos'], ['butterflies', 'Mariposas'], ['flowers', 'Flores delicadas'], ['moon', 'Luna'], ['stars', 'Estrellas'], ['crown', 'Corona'], ['rings', 'Anillos'], ['cat', 'Gatito'], ['dog', 'Perrito'], ['music', 'Música'], ['disco', 'Disco']])]),
                 F('radio', 'metal_style', 'Detalles que brillan', ['default' => 'jema', 'options' => $pick([$JEMA, ['none', 'Sin brillo'], ['silver', 'Plateado'], ['gold', 'Dorado'], ['rose', 'Oro rosa']])]),
                 F('radio', 'background_style', 'Fondo decorativo suave', ['default' => 'jema', 'img_shape' => 'square', 'options' => $img($backgrounds, 'backgrounds/', '.svg')]),
@@ -118,7 +118,7 @@ return [
             'id' => 'countdown', 'title' => 'Cuenta regresiva', 'description' => 'Un reloj con los días que faltan. Usa la fecha que pusiste antes.',
             'fields' => [
                 F('switch', 'sec_countdown', 'Quiero esta sección'),
-                F('radio', 'countdown_style', 'Estilo del reloj', ['required' => true, 'show_if' => $on('countdown'), 'options' => $pick([['glass', 'Cristal'], ['editorial', 'Editorial'], ['rings', 'Órbitas']])]),
+                F('radio', 'countdown_style', 'Estilo del reloj', ['required' => true, 'show_if' => $on('countdown'), 'options' => $pick([['glass', 'Cristal', 'clock:glass'], ['editorial', 'Editorial', 'clock:editorial'], ['rings', 'Órbitas', 'clock:rings']])]),
             ],
         ],
         [

@@ -110,7 +110,8 @@ function render_field(array $f, array $values, array $errors): string
             [$sel, $otherTxt] = split_other($cur);
             $cards = !empty($f['cards']) ? ' choices--cards' : '';
             $hasImg = (bool) array_filter($f['options'], fn($o) => !empty($o['img']));
-            $control = '<div class="choices' . $cards . ($type === 'palette' ? ' choices--palette' : '') . ($hasImg ? ' choices--images' . (!empty($f['img_shape']) ? ' choices--' . h($f['img_shape']) : '') : '') . '" role="' . ($multi ? 'group' : 'radiogroup') . '"' . $desc . '>';
+            $hasDemo = (bool) array_filter($f['options'], fn($o) => !empty($o['demo']));
+            $control = '<div class="choices' . $cards . ($type === 'palette' ? ' choices--palette' : '') . ($hasImg ? ' choices--images' . (!empty($f['img_shape']) ? ' choices--' . h($f['img_shape']) : '') : '') . ($hasDemo ? ' choices--demo' : '') . '" role="' . ($multi ? 'group' : 'radiogroup') . '"' . $desc . '>';
             foreach ($f['options'] as $o) {
                 $val = (string) $o['value'];
                 $checked = is_selected($sel, $val) ? ' checked' : '';
@@ -121,8 +122,17 @@ function render_field(array $f, array $values, array $errors): string
                     $sw .= '</span>';
                 }
                 $img = !empty($o['img']) ? '<span class="choice__img"><img loading="lazy" decoding="async" src="' . h($o['img']) . '" alt=""></span>' : ($hasImg ? '<span class="choice__img choice__img--none">' . icon('sparkle', 26) . '</span>' : '');
+                $demo = '';
+                if (!empty($o['demo'])) {
+                    [$kind, $what] = explode(':', (string) $o['demo'], 2);
+                    if ($kind === 'clock') {
+                        $demo = '<span class="choice__demo demo-clock demo-clock--' . h($what) . '" aria-hidden="true"><span><b>185</b><i>DÍAS</i></span><span><b>01</b><i>HORAS</i></span><span><b>16</b><i>MIN</i></span></span>';
+                    } elseif ($kind === 'font') {
+                        $demo = '<span class="choice__demo demo-font demo-font--' . h(strtolower($what)) . '" aria-hidden="true">' . h($f['demo_text'] ?? 'Lucía & Nico') . '</span>';
+                    }
+                }
                 $control .= '<label class="choice"><input type="' . ($multi ? 'checkbox' : 'radio') . '" name="f[' . h($name) . ']' . ($multi ? '[]' : '') . '" value="' . h($val) . '"' . $checked . '>'
-                    . '<span class="choice__box">' . $img . $sw . '<b>' . h($o['label']) . '</b>' . (!empty($o['desc']) ? '<small>' . h($o['desc']) . '</small>' : '') . '</span></label>';
+                    . '<span class="choice__box">' . $img . $demo . $sw . '<b>' . h($o['label']) . '</b>' . (!empty($o['desc']) ? '<small>' . h($o['desc']) . '</small>' : '') . '</span></label>';
             }
             if (!empty($f['other'])) {
                 $checked = ($sel === '__otro' || (is_array($sel) && $otherTxt !== '') || $otherTxt !== '') ? ' checked' : '';

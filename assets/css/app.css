@@ -275,3 +275,37 @@ input:focus,select:focus,textarea:focus{outline:none;background:#fff;border-colo
 .note__link{display:inline-block;margin-top:6px;font-weight:700;color:var(--accent-ink)}
 .choices--tall .choice__img{aspect-ratio:3/5;background:#f4efe9}
 .choices--tall .choice__img img{object-position:top center}
+
+/* ---- Muestras dentro de las opciones (relojes y tipografías de Qué Planazo) ---- */
+@font-face{font-family:QPGreatVibes;src:url('../qpfonts/great-vibes.woff2') format('woff2');font-display:swap}
+@font-face{font-family:QPParisienne;src:url('../qpfonts/parisienne.woff2') format('woff2');font-display:swap}
+@font-face{font-family:QPCormorant;src:url('../qpfonts/cormorant-500.woff2') format('woff2');font-weight:400 600;font-display:swap}
+@font-face{font-family:QPJost;src:url('../qpfonts/jost-400.woff2') format('woff2');font-weight:400 700;font-display:swap}
+@font-face{font-family:QPEditorial;src:url('../qpfonts/display-latin.ttf') format('truetype');font-display:swap}
+@font-face{font-family:QPManrope;src:url('../qpfonts/manrope-latin.ttf') format('truetype');font-display:swap}
+.choices--demo{flex-direction:column}
+.choices--demo .choice__box{border-radius:20px;padding:12px 16px 12px 52px;position:relative;gap:6px;align-items:stretch}
+.choices--demo .choice__box::before{content:"";position:absolute;left:16px;top:50%;margin-top:-11px;width:22px;height:22px;border-radius:50%;border:1.5px solid #b9c2ca;background:#fff}
+.choices--demo .choice__box b{font-size:.86rem;font-weight:600;color:var(--muted)}
+.choices--demo input:checked + .choice__box{background:var(--accent-soft);color:var(--ink);border-color:var(--accent);box-shadow:0 0 0 1px var(--accent) inset,0 6px 18px #d34e1822}
+.choices--demo input:checked + .choice__box b{color:var(--accent-ink)}
+.choices--demo input:checked + .choice__box::before{border-color:var(--accent);background:radial-gradient(circle,var(--accent) 0 6px,#fff 7px)}
+.choice__demo{display:block;color:#3b3025}
+.demo-font{font-size:1.75rem;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.demo-font--greatvibes{font-family:QPGreatVibes,cursive;font-size:2.1rem}
+.demo-font--parisienne{font-family:QPParisienne,cursive;font-size:1.95rem}
+.demo-font--cormorant{font-family:QPCormorant,Georgia,serif}
+.demo-font--editorial{font-family:QPEditorial,Georgia,serif}
+.demo-font--manrope{font-family:QPManrope,Arial,sans-serif;font-weight:600;font-size:1.45rem}
+.demo-font--jost{font-family:QPJost,Arial,sans-serif;font-size:1.45rem}
+.demo-font--georgia{font-family:Georgia,"Times New Roman",serif;font-size:1.5rem}
+.field[data-name=font_texts] .demo-font{font-size:1.15rem;white-space:normal}
+.field[data-name=font_texts] .demo-font--cormorant{font-size:1.3rem}
+.demo-clock{display:flex;justify-content:center;gap:12px;padding:14px 10px;border-radius:14px;background:linear-gradient(145deg,#f6e9dd,#fbf4ec);--dc:#c2a15e}
+.demo-clock>span{display:flex;flex-direction:column;align-items:center;justify-content:center;min-width:62px}
+.demo-clock b{font:400 1.7rem/1 QPEditorial,Georgia,serif!important;color:#3b3025!important}
+.demo-clock i{font:600 .55rem/1 var(--sans);letter-spacing:.14em;margin-top:6px;font-style:normal;color:#6b5a4a}
+.demo-clock--glass>span{background:#ffffff8c;padding:10px 6px;border:1px solid #ffffffd9;border-radius:12px;box-shadow:0 4px 12px #3b302512}
+.demo-clock--rings>span{border:1px solid var(--dc);border-radius:50%;width:66px;height:66px;min-width:66px}
+.demo-clock--rings b{font-size:1.45rem!important}
+.demo-clock--editorial>span{border-bottom:1px solid var(--dc);padding-bottom:10px}

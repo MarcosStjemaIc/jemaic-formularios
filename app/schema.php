@@ -159,7 +159,7 @@ function upgrade_theme_covers(): void
 function upgrade_split_style(): void
 {
     $marker = STORAGE_DIR . '/.forms_v4';
-    if (is_file($marker)) return;
+    if (is_file($marker)) { upgrade_option_demos(); return; }
     $row = q_one('SELECT * FROM forms WHERE slug = ?', ['invitacion-digital']);
     $def = $row ? json_decode((string) $row['definition'], true) : null;
     if (is_array($def) && (int) ($def['version'] ?? 1) === 3) {
@@ -189,6 +189,39 @@ function upgrade_split_style(): void
         $def['version'] = 4;
         q('UPDATE forms SET definition = ?, updated_at = ? WHERE id = ?', [json_encode($def, JSON_UNESCAPED_UNICODE), now(), $row['id']]);
         app_log('Invitación digital: los colores pasan a ser un paso propio y obligatorio (v4).');
+    }
+    @file_put_contents($marker, date('c'));
+    upgrade_option_demos();
+}
+
+/** v5: muestras dentro de las opciones (reloj de la cuenta regresiva y tipografías). Solo agrega la muestra a cada opción. */
+function upgrade_option_demos(): void
+{
+    $marker = STORAGE_DIR . '/.forms_v5';
+    if (is_file($marker)) return;
+    $row = q_one('SELECT * FROM forms WHERE slug = ?', ['invitacion-digital']);
+    $def = $row ? json_decode((string) $row['definition'], true) : null;
+    if (is_array($def) && (int) ($def['version'] ?? 1) === 4) {
+        $demos = [
+            'countdown_style' => ['glass' => 'clock:glass', 'editorial' => 'clock:editorial', 'rings' => 'clock:rings'],
+            'font_titles' => ['script' => 'font:GreatVibes', 'script_soft' => 'font:Parisienne', 'fine_serif' => 'font:Cormorant', 'editorial' => 'font:Editorial', 'modern' => 'font:Manrope'],
+            'font_texts' => ['fine_sans' => 'font:Jost', 'fine_serif' => 'font:Cormorant', 'modern' => 'font:Manrope', 'classic' => 'font:Georgia'],
+        ];
+        $texts = ['font_titles' => ['Lucía & Nico', 'Así se vería el nombre en la invitación.'], 'font_texts' => ['Te esperamos para celebrar juntos', 'Así se verían los textos de la invitación.']];
+        foreach ($def['steps'] as &$st) {
+            foreach ($st['fields'] as &$f) {
+                $n = $f['name'] ?? '';
+                if (!isset($demos[$n]) || empty($f['options'])) continue;
+                foreach ($f['options'] as &$o) if (isset($demos[$n][$o['value'] ?? ''])) $o['demo'] = $demos[$n][$o['value']];
+                unset($o);
+                if (isset($texts[$n])) { $f['demo_text'] = $texts[$n][0]; if (empty($f['help'])) $f['help'] = $texts[$n][1]; }
+            }
+            unset($f);
+        }
+        unset($st);
+        $def['version'] = 5;
+        q('UPDATE forms SET definition = ?, updated_at = ? WHERE id = ?', [json_encode($def, JSON_UNESCAPED_UNICODE), now(), $row['id']]);
+        app_log('Invitación digital: muestras de reloj y tipografías en las opciones (v5).');
     }
     @file_put_contents($marker, date('c'));
 }
