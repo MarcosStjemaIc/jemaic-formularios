@@ -126,7 +126,7 @@ function upgrade_seeded_forms(): void
 function upgrade_theme_covers(): void
 {
     $marker = STORAGE_DIR . '/.forms_v3';
-    if (is_file($marker)) return;
+    if (is_file($marker)) { upgrade_split_style(); return; }
     $row = q_one('SELECT * FROM forms WHERE slug = ?', ['invitacion-digital']);
     $def = $row ? json_decode((string) $row['definition'], true) : null;
     if (is_array($def) && (int) ($def['version'] ?? 1) === 2) {
@@ -147,6 +147,48 @@ function upgrade_theme_covers(): void
         $def['version'] = 3;
         q('UPDATE forms SET definition = ?, updated_at = ? WHERE id = ?', [json_encode($def, JSON_UNESCAPED_UNICODE), now(), $row['id']]);
         app_log('Invitación digital: portadas completas en "Diseño de portada" (v3).');
+    }
+    @file_put_contents($marker, date('c'));
+    upgrade_split_style();
+}
+
+/**
+ * v4: el paso "El estilo" se divide en tres (diseño, colores, letras y detalles) para que los colores
+ * tengan su propia pantalla y no se puedan saltear. Solo reacomoda esas preguntas; conserva el resto.
+ */
+function upgrade_split_style(): void
+{
+    $marker = STORAGE_DIR . '/.forms_v4';
+    if (is_file($marker)) return;
+    $row = q_one('SELECT * FROM forms WHERE slug = ?', ['invitacion-digital']);
+    $def = $row ? json_decode((string) $row['definition'], true) : null;
+    if (is_array($def) && (int) ($def['version'] ?? 1) === 3) {
+        $steps = [];
+        foreach ($def['steps'] as $st) {
+            $names = array_column($st['fields'] ?? [], 'name');
+            if (!in_array('theme', $names, true) || !in_array('look', $names, true)) { $steps[] = $st; continue; }
+            $design = []; $colors = []; $rest = [];
+            foreach ($st['fields'] as $f) {
+                $n = $f['name'] ?? '';
+                if ($n === 'look') {
+                    unset($f['default']);
+                    $f['required'] = true;
+                    $f['label'] = '¿Qué colores querés para tu invitación?';
+                    $f['help'] = 'Tocá una opción para seguir. Con “Prefiero elegir mis colores” elegís vos la letra, el acento y el fondo.';
+                    $colors[] = $f;
+                } elseif ($n === 'colors') { $colors[] = $f; }
+                elseif ($n === 'theme' || ($f['type'] ?? '') === 'info') { $design[] = $f; }
+                else { $rest[] = $f; }
+            }
+            $base = array_diff_key($st, ['fields' => 1, 'id' => 1, 'title' => 1, 'description' => 1]);
+            $steps[] = $base + ['id' => 'diseno', 'title' => 'Diseño de portada', 'description' => 'Elegí la portada que más te guste. Si no sabés, dejá “Que lo elija Jema”.', 'fields' => $design];
+            $steps[] = $base + ['id' => 'colores', 'title' => 'Los colores', 'description' => 'Elegí una combinación lista o armá la tuya con tus tres colores.', 'fields' => $colors];
+            if ($rest) $steps[] = $base + ['id' => 'detalles', 'title' => 'Letras y detalles', 'description' => 'Todo es opcional: si no sabés, dejá “Que lo elija Jema” y nosotros lo elegimos por vos.', 'fields' => $rest];
+        }
+        $def['steps'] = $steps;
+        $def['version'] = 4;
+        q('UPDATE forms SET definition = ?, updated_at = ? WHERE id = ?', [json_encode($def, JSON_UNESCAPED_UNICODE), now(), $row['id']]);
+        app_log('Invitación digital: los colores pasan a ser un paso propio y obligatorio (v4).');
     }
     @file_put_contents($marker, date('c'));
 }

@@ -45,7 +45,7 @@ $backgrounds = [$JEMA, ['none', 'Sin decoración'], ['butterflies', 'Mariposas y
 $pick = fn(array $pairs) => array_map(fn($p) => ['value' => $p[0], 'label' => $p[1]], $pairs);
 
 return [
-    'version' => 3,
+    'version' => 4,
     'export' => 'queplanazo',
     'title' => 'Invitación digital',
     'subtitle' => 'Qué Planazo · por Jema',
@@ -78,14 +78,24 @@ return [
             ],
         ],
         [
-            'id' => 'estilo', 'title' => 'El estilo', 'description' => 'Todo es opcional: si no sabés, dejá “Que lo elija Jema” y nosotros lo elegimos por vos.',
+            'id' => 'diseno', 'title' => 'Diseño de portada', 'description' => 'Elegí la portada que más te guste. Si no sabés, dejá “Que lo elija Jema”.',
             'fields' => [
                 ['type' => 'info', 'name' => 'info_coleccion', 'label' => '¿Querés ver los diseños en acción?', 'help' => 'Mirá la colección completa antes de elegir.', 'link' => 'https://queplanazo.jemaic.com/#coleccion', 'link_label' => 'Ver la colección'],
                 F('radio', 'theme', 'Diseño de portada', ['default' => 'jema', 'img_shape' => 'tall', 'help' => 'Cómo se acomodan los textos y la foto. Tocá la que más te guste.', 'options' => array_map(fn($o) => isset($o['img']) ? ['img' => '/assets/covers/' . $o['value'] . '.webp'] + $o : $o, $img($themes, 'sample-covers/', '-small.webp'))]),
-                F('radio', 'look', 'Estilo general', ['default' => 'jema', 'help' => 'Colores, letras y detalles listos para usar.', 'options' => $looks]),
+            ],
+        ],
+        [
+            'id' => 'colores', 'title' => 'Los colores', 'description' => 'Elegí una combinación lista o armá la tuya con tus tres colores.',
+            'fields' => [
+                F('radio', 'look', '¿Qué colores querés para tu invitación?', ['required' => true, 'help' => 'Tocá una opción para seguir. Con “Prefiero elegir mis colores” elegís vos la letra, el acento y el fondo.', 'options' => $looks]),
                 F('colors', 'colors', 'Tus colores', ['required' => true, 'need' => 3, 'hex' => true, 'slots' => ['Letra', 'Acento', 'Fondo'],
                     'help' => 'Tocá cada círculo para elegir en la rueda de colores, o pegá el código (HEX como #e9a9bb o RGB como 233,169,187). Abajo ves cómo quedan.',
                     'show_if' => ['field' => 'look', 'equals' => 'propio']]),
+            ],
+        ],
+        [
+            'id' => 'detalles', 'title' => 'Letras y detalles', 'description' => 'Todo es opcional: si no sabés, dejá “Que lo elija Jema” y nosotros lo elegimos por vos.',
+            'fields' => [
                 F('radio', 'font_titles', 'Letra de los títulos', ['default' => 'jema', 'options' => $pick([$JEMA, ['script', 'Cursiva elegante'], ['script_soft', 'Cursiva romántica'], ['fine_serif', 'Fina clásica'], ['editorial', 'Editorial'], ['modern', 'Moderna'], ['theme', 'Como el diseño']])]),
                 F('radio', 'font_texts', 'Letra de los textos', ['default' => 'jema', 'options' => $pick([$JEMA, ['fine_sans', 'Fina y clara'], ['fine_serif', 'Fina clásica'], ['modern', 'Moderna'], ['classic', 'Clásica'], ['theme', 'Como el diseño']])]),
                 F('radio', 'motif_style', 'Detalle o adorno', ['default' => 'jema', 'options' => $pick([$JEMA, ['none', 'Sin adornos'], ['butterflies', 'Mariposas'], ['flowers', 'Flores delicadas'], ['moon', 'Luna'], ['stars', 'Estrellas'], ['crown', 'Corona'], ['rings', 'Anillos'], ['cat', 'Gatito'], ['dog', 'Perrito'], ['music', 'Música'], ['disco', 'Disco']])]),

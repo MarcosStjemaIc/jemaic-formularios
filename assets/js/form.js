@@ -326,7 +326,12 @@
 
   form.addEventListener('input', saveDraft);
   form.addEventListener('change', function (e) {
+    var wasHidden = current ? $$('.field[data-show]', current).filter(function (f) { return f.hidden; }) : [];
     updateVisibility(); saveDraft();
+    // Si al elegir una opción aparece una pregunta nueva (p. ej. los tres colores), se la muestra enseguida.
+    var shown = wasHidden.filter(function (f) { return !f.hidden; })[0];
+    var own = e.target.closest && e.target.closest('.field');
+    if (shown && own && own.dataset.type !== 'switch') setTimeout(function () { shown.scrollIntoView({ behavior: 'smooth', block: 'center' }); }, 80);
     var fld = e.target.closest && e.target.closest('.field');
     if (fld && fld.classList.contains('has-error')) validateField(fld);
   });
