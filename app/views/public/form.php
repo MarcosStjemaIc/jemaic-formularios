@@ -27,6 +27,7 @@ $steps = $def['steps'];
     <?= csrf_field() ?>
     <input type="text" name="website" class="hp" tabindex="-1" autocomplete="off" aria-hidden="true">
     <input type="hidden" name="_t" value="<?= h((string) time()) ?>">
+    <input type="hidden" name="_up" value="<?= h(bin2hex(random_bytes(16))) ?>" data-nodraft>
 
     <div class="progress" id="progress" aria-live="polite">
       <div class="progress__bar"><span id="progressFill"></span></div>

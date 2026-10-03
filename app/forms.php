@@ -184,7 +184,7 @@ function validate_submission(array $def, array $post, array $filesInput, ?int $s
             $isEmpty = is_array($val) ? count($val) === 0 : trim((string) $val) === '';
 
             if ($f['type'] === 'file') {
-                $up = extract_uploads($filesInput, $name);
+                $up = array_merge(pre_uploads($post, $name), extract_uploads($filesInput, $name));
                 $link = !empty($f['link_alt']) ? mb_substr(trim((string) ($raw[$name . '__link'] ?? '')), 0, 500) : '';
                 if ($link !== '' && !preg_match('#^https?://#i', $link)) $link = 'https://' . $link;
                 if ($f['required'] && !$up && $link === '') { $errors[$name] = !empty($f['link_alt']) ? 'Subí una foto o pegá un link.' : 'Adjuntá al menos un archivo.'; continue; }
@@ -374,6 +374,87 @@ function extract_uploads(array $filesInput, string $name): array
     return $out;
 }
 
+// ---- Subida anticipada: cada archivo viaja al servidor apenas se elige ------------------
+function upload_tmp_dir(string $token): string
+{
+    return STORAGE_DIR . '/uploads/_tmp/' . $token;
+}
+
+/** Archivos ya subidos para un campo (ids que manda el formulario en up[campo][]). */
+function pre_uploads(array $post, string $name): array
+{
+    $token = (string) ($post['_up'] ?? '');
+    $all = is_array($post['up'] ?? null) ? $post['up'] : [];
+    $ids = is_array($all[$name] ?? null) ? $all[$name] : [];
+    if (!$ids || !preg_match('/^[a-f0-9]{32}$/', $token)) return [];
+    $out = [];
+    foreach (array_unique(array_filter($ids, 'is_string')) as $id) {
+        if (!preg_match('/^[a-f0-9]{16}\.[a-z0-9]{2,5}$/', $id)) continue;
+        $p = upload_tmp_dir($token) . '/' . $id;
+        if (!is_file($p)) continue;
+        $orig = is_file($p . '.name') ? trim((string) file_get_contents($p . '.name')) : '';
+        $ext = pathinfo($id, PATHINFO_EXTENSION);
+        if ($orig === '' || strtolower(pathinfo($orig, PATHINFO_EXTENSION)) !== $ext) $orig = 'archivo.' . $ext;
+        $out[] = ['name' => $orig, 'tmp' => $p, 'size' => (int) filesize($p), 'error' => UPLOAD_ERR_OK, 'pre' => true];
+    }
+    return $out;
+}
+
+/** Recibe un archivo suelto (o lo quita) y devuelve la respuesta JSON para el formulario. */
+function handle_tmp_upload(array $def, array $post, array $files): array
+{
+    $fail = fn(string $m) => ['ok' => false, 'error' => $m];
+    $token = (string) ($post['_up'] ?? '');
+    if (!preg_match('/^[a-f0-9]{32}$/', $token)) return $fail('Recargá la página y probá de nuevo.');
+    $dir = upload_tmp_dir($token);
+
+    $rm = (string) ($post['remove'] ?? '');
+    if ($rm !== '') {
+        if (preg_match('/^[a-f0-9]{16}\.[a-z0-9]{2,5}$/', $rm)) { @unlink($dir . '/' . $rm); @unlink($dir . '/' . $rm . '.name'); }
+        return ['ok' => true];
+    }
+
+    $field = null;
+    foreach (all_fields($def) as $f) if ($f['type'] === 'file' && $f['name'] === (string) ($post['field'] ?? '')) $field = $f;
+    $fl = $files['file'] ?? null;
+    if (!$field || !$fl || is_array($fl['name'])) return $fail('No pudimos recibir el archivo. Probá de nuevo.');
+    $u = ['name' => (string) $fl['name'], 'tmp' => (string) $fl['tmp_name'], 'size' => (int) $fl['size'], 'error' => (int) $fl['error']];
+    if ($u['error'] === UPLOAD_ERR_NO_FILE) return $fail('No pudimos recibir el archivo. Probá de nuevo.');
+    if ($err = validate_uploads([$u], $field)) return $fail($err);
+
+    $root = STORAGE_DIR . '/uploads/_tmp';
+    if (!is_dir($dir) && !@mkdir($dir, 0755, true)) return $fail('No pudimos guardar el archivo. Probá de nuevo.');
+    if (count(glob($dir . '/*.name') ?: []) >= 60) return $fail('Ya subiste muchos archivos. Quitá alguno para seguir.');
+    // Límite por conexión para que nadie llene el disco
+    $ipf = $root . '/.ip_' . substr(ip_hash(), 0, 16) . '_' . date('YmdH');
+    $n = (int) @file_get_contents($ipf);
+    if ($n >= 300) return $fail('Subiste muchos archivos en poco tiempo. Probá de nuevo en un rato.');
+    @file_put_contents($ipf, (string) ($n + 1));
+
+    $ext = strtolower(pathinfo($u['name'], PATHINFO_EXTENSION));
+    $id = bin2hex(random_bytes(8)) . '.' . $ext;
+    $moved = defined('ALLOW_TEST_UPLOADS') ? copy($u['tmp'], $dir . '/' . $id) : move_uploaded_file($u['tmp'], $dir . '/' . $id);
+    if (!$moved) return $fail('No pudimos guardar el archivo. Probá de nuevo.');
+    @file_put_contents($dir . '/' . $id . '.name', mb_substr(basename($u['name']), 0, 180));
+
+    if (random_int(1, 25) === 1) clean_tmp_uploads();
+    return ['ok' => true, 'id' => $id, 'size' => (int) filesize($dir . '/' . $id)];
+}
+
+/** Borra subidas anticipadas de formularios que nunca se enviaron (más de 3 días). */
+function clean_tmp_uploads(): void
+{
+    $root = STORAGE_DIR . '/uploads/_tmp';
+    $old = time() - 3 * 86400;
+    foreach (@scandir($root) ?: [] as $e) {
+        if ($e === '.' || $e === '..') continue;
+        $p = $root . '/' . $e;
+        if (@filemtime($p) > $old) continue;
+        if (is_dir($p)) { foreach (glob($p . '/*') ?: [] as $f) @unlink($f); @rmdir($p); }
+        else @unlink($p);
+    }
+}
+
 function validate_uploads(array $ups, array $f = []): ?string
 {
     $mb = (int) ($f['max_mb'] ?? 0) ?: (int) cfg('uploads.max_file_mb', 15);
@@ -389,7 +470,7 @@ function validate_uploads(array $ups, array $f = []): ?string
         if ($u['size'] > $max) return '“' . $u['name'] . '” supera los ' . $mb . ' MB.';
         $ext = strtolower(pathinfo($u['name'], PATHINFO_EXTENSION));
         if (!in_array($ext, $allowed, true)) return 'El formato de “' . $u['name'] . '” no está permitido (usá ' . strtoupper(implode(', ', array_diff($allowed, ['jpeg']))) . ').';
-        if (!is_uploaded_file($u['tmp']) && !defined('ALLOW_TEST_UPLOADS')) return 'Archivo inválido.';
+        if (empty($u['pre']) && !is_uploaded_file($u['tmp']) && !defined('ALLOW_TEST_UPLOADS')) return 'Archivo inválido.';
     }
     return null;
 }
@@ -401,7 +482,8 @@ function save_upload(array $u, int $submissionId): ?array
     if (!is_dir($dir) && !mkdir($dir, 0755, true)) return null;
     $stored = bin2hex(random_bytes(8)) . '.' . $ext;
     $dest = $dir . '/' . $stored;
-    $moved = defined('ALLOW_TEST_UPLOADS') ? copy($u['tmp'], $dest) : move_uploaded_file($u['tmp'], $dest);
+    if (!empty($u['pre'])) { $moved = @rename($u['tmp'], $dest); @unlink($u['tmp'] . '.name'); }
+    else $moved = defined('ALLOW_TEST_UPLOADS') ? copy($u['tmp'], $dest) : move_uploaded_file($u['tmp'], $dest);
     if (!$moved) return null;
     $mime = function_exists('mime_content_type') ? (string) @mime_content_type($dest) : 'application/octet-stream';
     $orig = preg_replace('/[^\p{L}\p{N}\-_. ()]+/u', '_', basename($u['name'])) ?: ('archivo.' . $ext);

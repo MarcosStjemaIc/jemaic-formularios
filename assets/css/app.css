@@ -309,3 +309,24 @@ input:focus,select:focus,textarea:focus{outline:none;background:#fff;border-colo
 .demo-clock--rings>span{border:1px solid var(--dc);border-radius:50%;width:66px;height:66px;min-width:66px}
 .demo-clock--rings b{font-size:1.45rem!important}
 .demo-clock--editorial>span{border-bottom:1px solid var(--dc);padding-bottom:10px}
+
+/* Subida de archivos: límite bien visible, avance y confirmación */
+.droplimit{display:flex;align-items:center;gap:12px;margin:0 0 10px;padding:12px 14px;border-radius:16px;background:var(--accent-soft);border:1.5px solid var(--accent);color:var(--ink)}
+.droplimit>b{flex:none;font-family:JemaDisplay,Montserrat,sans-serif;font-weight:400;font-size:2.5rem;line-height:.9;color:var(--accent);padding-top:4px}
+.droplimit span{flex:1;min-width:0;display:flex;flex-direction:column;line-height:1.25}
+.droplimit strong{font-size:1.08rem;font-weight:800}
+.droplimit small{font-size:.86rem;color:var(--muted)}
+.droplimit em{flex:none;font-style:normal;font-weight:800;font-size:.9rem;padding:6px 11px;border-radius:100px;background:#fff;border:1px solid var(--line);white-space:nowrap}
+.droplimit em.is-full{background:var(--accent);border-color:var(--accent);color:#fff}
+.drop__status{position:relative;z-index:3;margin:0 14px 8px;padding:12px 14px;border-radius:14px;font-weight:700;font-size:.95rem;line-height:1.35;background:#fff;border:1.5px solid var(--line)}
+.drop__status.is-ok{background:#e8f6ec;border-color:#2e9b57;color:#1b6b3a}
+.drop__status.is-busy{background:#fff8e6;border-color:#e0b23c;color:#7a5a07}
+.drop__status.is-err{background:#fdecea;border-color:var(--danger);color:var(--danger)}
+.drop__state{font-style:normal;font-size:.82rem;font-weight:700;color:var(--muted)}
+.is-ok>.drop__item .drop__state{color:#1b6b3a}
+.is-err>.drop__item .drop__state{color:var(--danger);white-space:normal}
+.drop__bar{display:block;height:4px;border-radius:4px;background:#e6eaee;overflow:hidden}
+.drop__bar i{display:block;height:100%;width:0;background:var(--accent);transition:width .2s}
+.is-ok>.drop__item .drop__bar,.is-err>.drop__item .drop__bar{display:none}
+.drop__acts{flex:none;display:flex;flex-direction:column;align-items:flex-end;gap:6px}
+.okmsg{margin:7px 0 0;padding:9px 12px;border-radius:12px;background:#e8f6ec;border:1.5px solid #2e9b57;color:#1b6b3a;font-weight:700;font-size:.9rem;line-height:1.3}

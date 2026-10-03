@@ -192,9 +192,12 @@ function render_field(array $f, array $values, array $errors): string
             $accept = $exts ? ' accept="' . h(implode(',', array_map(fn($e) => '.' . $e, $exts)) . (array_intersect($exts, ['jpg', 'jpeg', 'png', 'webp']) ? ',image/jpeg,image/png,image/webp' : '') . (array_intersect($exts, ['mp3', 'm4a']) ? ',audio/mpeg,audio/mp4,audio/x-m4a' : '')) . '"'
                 : (!empty($f['accept']) ? ' accept="' . h($f['accept']) . '"' : '');
             $what = $nMax === 1 ? ($f['file_word'] ?? 'un archivo') : ($f['file_word_plural'] ?? 'archivos');
-            $control = '<div class="drop" data-drop' . (!empty($f['captions']) ? ' data-captions="' . h($name) . '" data-caption-max="' . (int) ($f['caption_max'] ?? 160) . '"' : '') . (!empty($f['compress']) ? ' data-compress="1"' : '') . '><input type="file" id="' . $id . '" name="files[' . h($name) . '][]"' . ($nMax > 1 ? ' multiple' : '') . $accept . ' data-max-mb="' . $mb . '" data-max-files="' . $nMax . '">'
+            $imgOnly = $exts && !array_diff($exts, ['jpg', 'jpeg', 'png', 'webp', 'heic', 'gif']);
+            $noun = $imgOnly ? 'fotos' : 'archivos';
+            $limit = $nMax > 1 ? '<p class="droplimit"><b>' . $nMax . '</b><span><strong>Máximo ' . $nMax . ' ' . $noun . '</strong><small>Admitimos hasta ' . $nMax . ' ' . $noun . ' en esta sección.</small></span><em data-count>0 de ' . $nMax . '</em></p>' : '';
+            $control = $limit . '<div class="drop" data-drop data-noun="' . ($imgOnly ? 'foto' : ($exts && !array_diff($exts, ['mp3', 'm4a']) ? 'cancion' : 'archivo')) . '"' . (!empty($f['captions']) ? ' data-captions="' . h($name) . '" data-caption-max="' . (int) ($f['caption_max'] ?? 160) . '"' : '') . (!empty($f['compress']) ? ' data-compress="1"' : '') . '><input type="file" id="' . $id . '" name="files[' . h($name) . '][]"' . ($nMax > 1 ? ' multiple' : '') . $accept . ' data-max-mb="' . $mb . '" data-max-files="' . $nMax . '">'
                 . '<span class="drop__cta">' . icon('upload', 22) . '<b>Tocá para elegir ' . h($what) . '</b><small>' . ($nMax > 1 ? 'hasta ' . $nMax . ' · ' : '') . ($exts ? strtoupper(implode(', ', array_diff($exts, ['jpeg']))) . ' · ' : '') . 'hasta ' . $mb . ' MB cada uno</small></span>'
-                . '<ul class="drop__list" aria-live="polite"></ul></div>';
+                . '<p class="drop__status" role="status" aria-live="polite" hidden></p><ul class="drop__list"></ul></div>';
             if (!empty($f['link_alt'])) {
                 $lv = (string) ($values[$name . '__link'] ?? '');
                 $control .= '<div class="linkalt"><span class="linkalt__or">o pegá un link</span><input type="text" inputmode="url" autocapitalize="off" name="f[' . h($name) . '__link]" value="' . h($lv) . '" placeholder="' . h($f['link_placeholder'] ?? 'Link de Drive, Google Fotos o WeTransfer') . '" maxlength="500"></div>';

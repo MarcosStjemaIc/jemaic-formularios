@@ -27,7 +27,7 @@ if ($path === '/') {
     exit;
 }
 
-if (preg_match('#^/f/([a-z0-9\-]+)(/gracias)?$#', $path, $m)) {
+if (preg_match('#^/f/([a-z0-9\-]+)(/gracias|/subir)?$#', $path, $m)) {
     $row = form_row_by_slug($m[1]);
     if (!$row || (!(int) $row['active'] && !current_user())) {
         http_response_code(404);
@@ -36,6 +36,17 @@ if (preg_match('#^/f/([a-z0-9\-]+)(/gracias)?$#', $path, $m)) {
     }
     $def = form_def($row);
     $common = ['pageTitle' => $def['title'], 'pageDesc' => $def['subtitle'] !== '' ? $def['subtitle'] . '. Completalo desde el celular en pocos minutos.' : null, 'accent' => $def['accent'], 'brand' => $def['brand']];
+
+    // Subida anticipada de un archivo (responde JSON)
+    if (($m[2] ?? '') === '/subir') {
+        if ($method !== 'POST') json_out(['ok' => false, 'error' => 'No disponible.'], 405);
+        if (!empty($_SERVER['CONTENT_LENGTH']) && empty($_POST)) json_out(['ok' => false, 'error' => 'El archivo es demasiado pesado.'], 413);
+        start_session();
+        $sent = (string) ($_POST['_csrf'] ?? '');
+        if ($sent === '' || !hash_equals((string) ($_SESSION['csrf'] ?? ''), $sent)) json_out(['ok' => false, 'error' => 'Tu sesión venció: recargá la página y volvé a elegir los archivos.'], 419);
+        session_write_close();
+        json_out(handle_tmp_upload($def, $_POST, $_FILES));
+    }
 
     // Página de gracias
     if (!empty($m[2])) {
